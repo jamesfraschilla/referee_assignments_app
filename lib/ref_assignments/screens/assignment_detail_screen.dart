@@ -25,6 +25,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
     ]);
   }
 
@@ -41,6 +42,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     final primaryOfficials = assignment.officials
         .where((official) => official.role != OfficialRole.alternate)
         .toList();
+    primaryOfficials.sort(
+      (a, b) => _rolePriority(a.role).compareTo(_rolePriority(b.role)),
+    );
     final alternate = assignment.officials
         .where((official) => official.role == OfficialRole.alternate)
         .map((official) => official.name)
@@ -64,76 +68,148 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableWidth = constraints.maxWidth;
-          final cardWidth = availableWidth * 0.95;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(12),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: availableWidth < 600 ? availableWidth : cardWidth,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final orientation = MediaQuery.of(context).orientation;
+            final isPortrait = orientation == Orientation.portrait;
+            final availableWidth = constraints.maxWidth;
+            final cardWidth = availableWidth * 0.95;
+            final headerSpacing = isPortrait ? 16.0 : 12.0;
+            final footerSpacing = isPortrait ? 12.0 : 12.0;
+            final inner = DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
                 ),
-                child: AspectRatio(
-                  aspectRatio: 11 / 8.5,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            matchupLabel,
-                            style: matchupStyle,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          if (primaryOfficials.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 32),
-                              child: Text(
-                                'Officials not posted.',
-                                style: theme.textTheme.titleMedium,
-                              ),
-                            )
-                          else
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 24,
-                              runSpacing: 24,
-                              children: primaryOfficials.map((official) {
-                                return OfficialAvatar(
-                                  official: official,
-                                  size: 160,
-                                );
-                              }).toList(),
-                            ),
-                          const SizedBox(height: 12),
-                          if (alternate.isNotEmpty)
-                            Text(
-                              'Alternate: ${alternate.join(', ')}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                        ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          matchupLabel,
+                          style: matchupStyle,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
-                  ),
+                    SizedBox(height: headerSpacing),
+                    if (primaryOfficials.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Text(
+                          'Officials not posted.',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      )
+                    else
+                      _OfficialsLayout(
+                        officials: primaryOfficials,
+                        isPortrait: isPortrait,
+                      ),
+                    SizedBox(height: footerSpacing),
+                    if (alternate.isNotEmpty)
+                      Text(
+                        'Alternate: ${alternate.join(', ')}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-          );
-        },
+            );
+
+            final card = isPortrait
+                ? inner
+                : AspectRatio(
+                    aspectRatio: 11 / 8.5,
+                    child: inner,
+                  );
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: availableWidth < 600 ? availableWidth : cardWidth,
+                  ),
+                  child: card,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
+  }
+}
+
+class _OfficialsLayout extends StatelessWidget {
+  const _OfficialsLayout({
+    required this.officials,
+    required this.isPortrait,
+  });
+
+  final List<RefereeOfficial> officials;
+  final bool isPortrait;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPortrait) {
+      final width = MediaQuery.of(context).size.width;
+      final portraitSize = width < 360 ? 130.0 : 140.0;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: officials.map((official) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: OfficialAvatar(
+              official: official,
+              size: portraitSize,
+              compact: true,
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 24,
+      runSpacing: 24,
+      children: officials
+          .map(
+            (official) => OfficialAvatar(
+              official: official,
+              size: 160,
+              compact: false,
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+int _rolePriority(OfficialRole role) {
+  switch (role) {
+    case OfficialRole.crewChief:
+      return 0;
+    case OfficialRole.referee:
+      return 1;
+    case OfficialRole.umpire:
+      return 2;
+    case OfficialRole.alternate:
+      return 3;
   }
 }
