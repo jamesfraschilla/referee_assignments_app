@@ -9,11 +9,13 @@ class OfficialAvatar extends StatelessWidget {
     required this.official,
     this.size = 120,
     this.showRole = true,
+    this.compact = false,
   });
 
   final RefereeOfficial official;
   final double size;
   final bool showRole;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -25,19 +27,25 @@ class OfficialAvatar extends StatelessWidget {
     final lineOneSegments = <String>[
       if (official.number != null) '#${official.number}',
       if (nameParts.first.isNotEmpty) nameParts.first,
+      if (compact && nameParts.last.isNotEmpty) nameParts.last,
     ];
     final lineOne = lineOneSegments.isNotEmpty
         ? lineOneSegments.join(' ')
         : nameParts.fallback;
-    final lineTwo = nameParts.last;
-    final lineOneStyle = (textTheme.headlineSmall ??
+    final lineTwo = compact ? '' : nameParts.last;
+
+    final basePrimaryStyle = (textTheme.headlineSmall ??
             textTheme.titleLarge ??
             textTheme.titleMedium ??
-            const TextStyle(fontSize: 24))
-        .copyWith(
+            const TextStyle(fontSize: 24));
+    final lineOneStyle = basePrimaryStyle.copyWith(
       fontWeight: FontWeight.w700,
       color: Colors.black,
       fontFamily: 'DINalt',
+      height: compact ? 0.9 : 1.05,
+      fontSize: compact
+          ? (basePrimaryStyle.fontSize ?? 24) * 0.9
+          : basePrimaryStyle.fontSize,
     );
     final lineTwoStyle = (textTheme.titleMedium ??
             textTheme.titleSmall ??
@@ -46,66 +54,85 @@ class OfficialAvatar extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: Colors.black,
       fontFamily: 'DINalt',
+      height: 1.0,
     );
+
+    final photoSpacing = compact ? 6.0 : 12.0;
+    final lineGap = compact ? 0.0 : 2.0;
+    final roleGap = compact ? 0.0 : 4.0;
+
+    final children = <Widget>[
+      SizedBox(
+        height: size,
+        width: size,
+        child: Card(
+          elevation: 4,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Image.asset(
+              refereeAssetPath(official.name),
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initials(official.name),
+                    style: textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+      SizedBox(height: photoSpacing),
+      Text(
+        lineOne,
+        textAlign: TextAlign.center,
+        style: lineOneStyle,
+        softWrap: true,
+      ),
+    ];
+
+    if (lineTwo.isNotEmpty) {
+      children.addAll([
+        SizedBox(height: lineGap),
+        Text(
+          lineTwo,
+          textAlign: TextAlign.center,
+          style: lineTwoStyle,
+        ),
+      ]);
+    }
+
+    if (showRole) {
+      children.addAll([
+        SizedBox(height: roleGap),
+        Text(
+          roleLabel,
+          textAlign: TextAlign.center,
+          style: textTheme.labelLarge?.copyWith(
+            color: const Color(0xFF565656),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ]);
+    }
+
+    final width = compact ? double.infinity : size;
+
     return SizedBox(
-      width: size,
+      width: width,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: size,
-            width: size,
-            child: Card(
-              elevation: 4,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(borderRadius: borderRadius),
-              child: ClipRRect(
-                borderRadius: borderRadius,
-                child: Image.asset(
-                  refereeAssetPath(official.name),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      alignment: Alignment.center,
-                      child: Text(
-                        _initials(official.name),
-                        style: textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            lineOne,
-            textAlign: TextAlign.center,
-            style: lineOneStyle,
-          ),
-          if (lineTwo.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              lineTwo,
-              textAlign: TextAlign.center,
-              style: lineTwoStyle,
-            ),
-          ],
-          if (showRole) ...[
-            const SizedBox(height: 4),
-            Text(
-              roleLabel,
-              style: textTheme.labelLarge?.copyWith(
-                color: const Color(0xFF565656),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: children,
       ),
     );
   }
