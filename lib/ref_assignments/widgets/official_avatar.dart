@@ -27,20 +27,24 @@ class OfficialAvatar extends StatelessWidget {
     final lineOneSegments = <String>[
       if (official.number != null) '#${official.number}',
       if (nameParts.first.isNotEmpty) nameParts.first,
+      if (compact && nameParts.last.isNotEmpty) nameParts.last,
     ];
     final lineOne = lineOneSegments.isNotEmpty
         ? lineOneSegments.join(' ')
         : nameParts.fallback;
-    final lineTwo = nameParts.last;
-    final lineOneStyle = (textTheme.headlineSmall ??
+    final lineTwo = compact ? '' : nameParts.last;
+    final baseLineOneStyle = (textTheme.headlineSmall ??
             textTheme.titleLarge ??
             textTheme.titleMedium ??
-            const TextStyle(fontSize: 24))
-        .copyWith(
+            const TextStyle(fontSize: 24));
+    final lineOneStyle = baseLineOneStyle.copyWith(
       fontWeight: FontWeight.w700,
       color: Colors.black,
       fontFamily: 'DINalt',
-      height: compact ? 0.9 : 1.05,
+      height: compact ? 0.85 : 1.05,
+      fontSize: compact
+          ? (baseLineOneStyle.fontSize ?? 24) * 0.9
+          : baseLineOneStyle.fontSize,
     );
     final lineTwoStyle = (textTheme.titleMedium ??
             textTheme.titleSmall ??
@@ -51,68 +55,88 @@ class OfficialAvatar extends StatelessWidget {
       fontFamily: 'DINalt',
       height: compact ? 0.9 : 1.05,
     );
-    final photoSpacing = compact ? 8.0 : 12.0;
+    final photoSpacing = compact ? 4.0 : 12.0;
     final lineGap = compact ? 0.0 : 2.0;
-    final roleGap = compact ? 2.0 : 4.0;
+    final roleGap = compact ? 0.0 : 4.0;
+    final body = <Widget>[
+      SizedBox(
+        height: size,
+        width: size,
+        child: Card(
+          elevation: 4,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Image.asset(
+              refereeAssetPath(official.name),
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initials(official.name),
+                    style: textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    ];
+
+    if (compact) {
+      body.add(SizedBox(height: photoSpacing));
+      body.add(Text(
+        lineOne,
+        textAlign: TextAlign.center,
+        style: lineOneStyle,
+        softWrap: true,
+      ));
+    } else {
+      body.addAll([
+        SizedBox(height: photoSpacing),
+        Text(
+          lineOne,
+          textAlign: TextAlign.center,
+          style: lineOneStyle,
+        ),
+        if (lineTwo.isNotEmpty) ...[
+          SizedBox(height: lineGap),
+          Text(
+            lineTwo,
+            textAlign: TextAlign.center,
+            style: lineTwoStyle,
+          ),
+        ],
+      ]);
+    }
+
+    if (showRole) {
+      body.addAll([
+        SizedBox(height: roleGap),
+        Text(
+          roleLabel,
+          textAlign: TextAlign.center,
+          style: textTheme.labelLarge?.copyWith(
+            color: const Color(0xFF565656),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ]);
+    }
+
     return SizedBox(
-      width: size,
+      width: compact ? double.infinity : size,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: size,
-            width: size,
-            child: Card(
-              elevation: 4,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(borderRadius: borderRadius),
-              child: ClipRRect(
-                borderRadius: borderRadius,
-                child: Image.asset(
-                  refereeAssetPath(official.name),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      alignment: Alignment.center,
-                      child: Text(
-                        _initials(official.name),
-                        style: textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: photoSpacing),
-          Text(
-            lineOne,
-            textAlign: TextAlign.center,
-            style: lineOneStyle,
-          ),
-          if (lineTwo.isNotEmpty) ...[
-            SizedBox(height: lineGap),
-            Text(
-              lineTwo,
-              textAlign: TextAlign.center,
-              style: lineTwoStyle,
-            ),
-          ],
-          if (showRole) ...[
-            SizedBox(height: roleGap),
-            Text(
-              roleLabel,
-              style: textTheme.labelLarge?.copyWith(
-                color: const Color(0xFF565656),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: body,
       ),
     );
   }
