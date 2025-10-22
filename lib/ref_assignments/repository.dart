@@ -7,8 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 import 'models.dart';
 import 'parser.dart';
@@ -28,9 +26,6 @@ class RefereeAssignmentsRepository {
 
   final http.Client _client;
   final RefereeAssignmentParser _parser = RefereeAssignmentParser();
-
-  static bool _tzInitialized = false;
-  static tz.Location? _easternLocation;
 
   RefereeAssignmentsDay? _memoryCache;
   Future<File>? _cachedFile;
@@ -64,14 +59,10 @@ class RefereeAssignmentsRepository {
     final completer = Completer<RefereeAssignmentsDay>();
     _ongoingFetch = completer.future;
     try {
-      final targetDate = _computeLeagueDate();
+      final targetDate = DateTime.now();
       RefereeAssignmentsDay parsed;
       try {
         parsed = await _fetchFromApi(targetDate);
-        if (parsed.games.isEmpty) {
-          debugPrint('Assignments API returned no games; falling back to HTML.');
-          parsed = await _fetchFromHtml();
-        }
       } catch (apiError, apiStack) {
         debugPrint('Assignments API fetch failed: $apiError\n$apiStack');
         parsed = await _fetchFromHtml();
@@ -89,43 +80,10 @@ class RefereeAssignmentsRepository {
     }
   }
 
-  DateTime _computeLeagueDate() {
-    if (kIsWeb) return DateTime.now();
-    try {
-      _ensureTimezoneInitialized();
-      final location =
-          _easternLocation ??= tz.getLocation('America/New_York');
-      final easternNow = tz.TZDateTime.now(location);
-      return DateTime(easternNow.year, easternNow.month, easternNow.day);
-    } catch (e) {
-      debugPrint('Failed to compute Eastern date: $e');
-      return DateTime.now();
-    }
-  }
-
-  void _ensureTimezoneInitialized() {
-    if (_tzInitialized) return;
-    try {
-      tz.initializeTimeZones();
-    } catch (_) {
-      // Swallow duplicate initializations or failures; we fall back to local time.
-    } finally {
-      _tzInitialized = true;
-    }
-  }
-
   Future<RefereeAssignmentsDay> _fetchFromApi(DateTime targetDate) async {
     final formattedDate = DateFormat('yyyy-MM-dd').format(targetDate);
     final uri = Uri.parse('$_apiEndpoint?date=$formattedDate');
-    final response = await _client.get(
-      uri,
-      headers: {
-        'Referer': _endpoint,
-        'User-Agent':
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) FlutterApp/1.0',
-        'Accept': 'application/json',
-      },
-    );
+    final response = await _client.get(uri);
     if (response.statusCode != 200) {
       throw HttpException(
         'Failed to load assignments API: HTTP ${response.statusCode}',

@@ -9,13 +9,11 @@ class OfficialAvatar extends StatelessWidget {
     required this.official,
     this.size = 120,
     this.showRole = true,
-    this.compact = false,
   });
 
   final RefereeOfficial official;
   final double size;
   final bool showRole;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +38,6 @@ class OfficialAvatar extends StatelessWidget {
       fontWeight: FontWeight.w700,
       color: Colors.black,
       fontFamily: 'DINalt',
-      height: compact ? 0.9 : 1.05,
     );
     final lineTwoStyle = (textTheme.titleMedium ??
             textTheme.titleSmall ??
@@ -49,11 +46,7 @@ class OfficialAvatar extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: Colors.black,
       fontFamily: 'DINalt',
-      height: compact ? 0.9 : 1.05,
     );
-    final photoSpacing = compact ? 8.0 : 12.0;
-    final lineGap = compact ? 0.0 : 2.0;
-    final roleGap = compact ? 2.0 : 4.0;
     return SizedBox(
       width: size,
       child: Column(
@@ -88,14 +81,14 @@ class OfficialAvatar extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: photoSpacing),
+          const SizedBox(height: 12),
           Text(
             lineOne,
             textAlign: TextAlign.center,
             style: lineOneStyle,
           ),
           if (lineTwo.isNotEmpty) ...[
-            SizedBox(height: lineGap),
+            const SizedBox(height: 2),
             Text(
               lineTwo,
               textAlign: TextAlign.center,
@@ -103,7 +96,7 @@ class OfficialAvatar extends StatelessWidget {
             ),
           ],
           if (showRole) ...[
-            SizedBox(height: roleGap),
+            const SizedBox(height: 4),
             Text(
               roleLabel,
               style: textTheme.labelLarge?.copyWith(
