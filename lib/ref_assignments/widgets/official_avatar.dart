@@ -10,12 +10,14 @@ class OfficialAvatar extends StatelessWidget {
     this.size = 120,
     this.showRole = true,
     this.compact = false,
+    this.textColor = Colors.black,
   });
 
   final RefereeOfficial official;
   final double size;
   final bool showRole;
   final bool compact;
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class OfficialAvatar extends StatelessWidget {
             const TextStyle(fontSize: 24));
     final lineOneStyle = basePrimaryStyle.copyWith(
       fontWeight: FontWeight.w700,
-      color: Colors.black,
+      color: textColor,
       fontFamily: 'DINalt',
       height: compact ? 0.9 : 1.05,
       fontSize: compact
@@ -52,7 +54,7 @@ class OfficialAvatar extends StatelessWidget {
             const TextStyle(fontSize: 18))
         .copyWith(
       fontWeight: FontWeight.w600,
-      color: Colors.black,
+      color: textColor,
       fontFamily: 'DINalt',
       height: 1.0,
     );
@@ -83,6 +85,7 @@ class OfficialAvatar extends StatelessWidget {
                     _initials(official.name),
                     style: textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: textColor,
                     ),
                   ),
                 );
@@ -118,7 +121,7 @@ class OfficialAvatar extends StatelessWidget {
           roleLabel,
           textAlign: TextAlign.center,
           style: textTheme.labelLarge?.copyWith(
-            color: const Color(0xFF565656),
+            color: textColor,
             fontWeight: FontWeight.w600,
           ),
         ),

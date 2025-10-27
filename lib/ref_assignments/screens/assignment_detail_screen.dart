@@ -38,6 +38,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     final assignment = widget.assignment;
     final primaryOfficials = assignment.officials
         .where((official) => official.role != OfficialRole.alternate)
@@ -62,12 +65,12 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             ))
         .copyWith(
       fontWeight: FontWeight.bold,
-      color: Colors.black,
+      color: textColor,
       fontSize: matchupBaseSize * 1.3,
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -80,7 +83,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
             final cardContent = DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: backgroundColor,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Padding(
@@ -110,13 +113,16 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Text(
                           'Officials not posted.',
-                          style: theme.textTheme.titleMedium,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: textColor,
+                          ),
                         ),
                       )
                     else
                       _OfficialsLayout(
                         officials: primaryOfficials,
                         isPortrait: isPortrait,
+                        textColor: textColor,
                       ),
                     SizedBox(height: footerSpacing),
                     if (alternate.isNotEmpty)
@@ -124,6 +130,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         'Alternate: ${alternate.join(', ')}',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: textColor,
                         ),
                       ),
                   ],
@@ -157,10 +164,12 @@ class _OfficialsLayout extends StatelessWidget {
   const _OfficialsLayout({
     required this.officials,
     required this.isPortrait,
+    required this.textColor,
   });
 
   final List<RefereeOfficial> officials;
   final bool isPortrait;
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +185,7 @@ class _OfficialsLayout extends StatelessWidget {
               official: official,
               size: portraitSize,
               compact: true,
+              textColor: textColor,
             ),
           );
         }).toList(),
@@ -192,6 +202,7 @@ class _OfficialsLayout extends StatelessWidget {
               official: official,
               size: 160,
               compact: false,
+              textColor: textColor,
             ),
           )
           .toList(),
