@@ -57,6 +57,7 @@ const Map<String, String> _refereeAssetLookup = {
   'karl_lane': 'assets/referees/Karl Lane.jpg',
   'kevin_cutler': 'assets/referees/Kevin Cutler.jpg',
   'kevin_scott': 'assets/referees/Kevin Scott.jpg',
+  'klajdi_mulla': 'assets/referees/Klajdi Mulla.jpg',
   'lauren_holtkamp_sterling': 'assets/referees/Lauren Holtkamp-Sterling.jpg',
   'leon_wood': 'assets/referees/Leon Wood.jpg',
   'leaon_wood': 'assets/referees/Leon Wood.jpg',
