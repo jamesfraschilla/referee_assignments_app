@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -75,7 +77,27 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NBA Referee Assignments'),
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'NBA Referee Assignments',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _DayDropdown(
+              dates: state.availableDates,
+              selectedDate: state.selectedDate,
+              onSelect: (date) {
+                if (date != null) {
+                  unawaited(_store.selectDate(date));
+                }
+              },
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -170,6 +192,57 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
         },
       ),
     );
+  }
+}
+
+class _DayDropdown extends StatelessWidget {
+  const _DayDropdown({
+    required this.dates,
+    required this.selectedDate,
+    required this.onSelect,
+  });
+
+  final List<DateTime> dates;
+  final DateTime? selectedDate;
+  final ValueChanged<DateTime?> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    if (dates.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    final items = dates
+        .map(
+          (date) => DropdownMenuItem<DateTime>(
+            value: date,
+            child: Text(
+              _labelForDate(date),
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        )
+        .toList();
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<DateTime>(
+        value: selectedDate ?? dates.first,
+        items: items,
+        isDense: true,
+        onChanged: dates.length > 1 ? onSelect : null,
+        dropdownColor: theme.colorScheme.surface,
+        icon: const Icon(Icons.arrow_drop_down),
+      ),
+    );
+  }
+
+  String _labelForDate(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final today = DateTime.now();
+    final normalizedToday = DateTime(today.year, today.month, today.day);
+    if (normalized == normalizedToday) {
+      return 'Today';
+    }
+    return DateFormat.MMMd().format(date);
   }
 }
 

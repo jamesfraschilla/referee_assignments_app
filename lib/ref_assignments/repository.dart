@@ -25,6 +25,7 @@ class RefereeAssignmentsRepository {
   static const _apiEndpoint =
       'https://official.nba.com/wp-json/api/v1/get-game-officials';
   static const _cacheFileName = 'referee_assignments.json';
+  static const _historyDirName = 'referee_assignments';
 
   final http.Client _client;
   final RefereeAssignmentParser _parser = RefereeAssignmentParser();
@@ -33,23 +34,55 @@ class RefereeAssignmentsRepository {
   static tz.Location? _easternLocation;
 
   RefereeAssignmentsDay? _memoryCache;
+  final Map<String, RefereeAssignmentsDay> _memoryHistory = {};
   Future<File>? _cachedFile;
+  Future<Directory>? _cachedHistoryDirectory;
   Future<RefereeAssignmentsDay>? _ongoingFetch;
 
-  Future<RefereeAssignmentsDay?> loadCachedDay() async {
+  Future<RefereeAssignmentsDay?> loadCachedDay({DateTime? date}) async {
+    final targetDate = _normalizeDate(date);
+    final cacheKey = targetDate?.toIso8601String();
+    if (cacheKey != null && _memoryHistory.containsKey(cacheKey)) {
+      return _memoryHistory[cacheKey];
+    }
     if (kIsWeb) {
-      return _memoryCache;
+      return targetDate == null ? _memoryCache : _memoryHistory[cacheKey];
     }
     try {
-      final file = await _ensureCacheFile();
-      if (!await file.exists()) {
+      if (targetDate == null) {
+        final file = await _ensureCacheFile();
+        if (!await file.exists()) {
+          return null;
+        }
+        final raw = await file.readAsString();
+        if (raw.isEmpty) return null;
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        final day = RefereeAssignmentsDay.fromJson(map);
+        _memoryCache = day;
+        _memoryHistory[day.date.toIso8601String()] = day;
+        return day;
+      }
+
+      final historyFile = await _historyFileForDate(
+        targetDate,
+        createIfMissing: false,
+      );
+      if (!await historyFile.exists()) {
         return null;
       }
-      final raw = await file.readAsString();
+      final raw = await historyFile.readAsString();
       if (raw.isEmpty) return null;
       final map = jsonDecode(raw) as Map<String, dynamic>;
       final day = RefereeAssignmentsDay.fromJson(map);
-      _memoryCache = day;
+      if (cacheKey != null) {
+        _memoryHistory[cacheKey] = day;
+      }
+      final matchesSelected = cacheKey != null &&
+          _memoryCache != null &&
+          _memoryCache!.date.toIso8601String() == cacheKey;
+      if (_memoryCache == null || matchesSelected) {
+        _memoryCache = day;
+      }
       return day;
     } catch (e) {
       debugPrint('Failed to load cached assignments: $e');
@@ -57,14 +90,14 @@ class RefereeAssignmentsRepository {
     }
   }
 
-  Future<RefereeAssignmentsDay> fetchAndCache() async {
+  Future<RefereeAssignmentsDay> fetchAndCache({DateTime? date}) async {
     if (_ongoingFetch != null) {
       return _ongoingFetch!;
     }
     final completer = Completer<RefereeAssignmentsDay>();
     _ongoingFetch = completer.future;
     try {
-      final targetDate = _computeLeagueDate();
+      final targetDate = _normalizeDate(date) ?? _computeLeagueDate();
       RefereeAssignmentsDay parsed;
       try {
         parsed = await _fetchFromApi(targetDate);
@@ -76,10 +109,13 @@ class RefereeAssignmentsRepository {
         debugPrint('Assignments API fetch failed: $apiError\n$apiStack');
         parsed = await _fetchFromHtml();
       }
-      await _saveCache(parsed);
-      _memoryCache = parsed;
-      completer.complete(parsed);
-      return parsed;
+      final normalizedDay = _normalizeAssignmentsDay(parsed, targetDate);
+      await _saveCache(normalizedDay);
+      await _saveHistory(normalizedDay);
+      _memoryCache = normalizedDay;
+      _memoryHistory[normalizedDay.date.toIso8601String()] = normalizedDay;
+      completer.complete(normalizedDay);
+      return normalizedDay;
     } catch (e, stack) {
       debugPrint('Assignments fetch failed: $e\n$stack');
       completer.completeError(e, stack);
@@ -165,6 +201,68 @@ class RefereeAssignmentsRepository {
     }
   }
 
+  Future<void> _saveHistory(RefereeAssignmentsDay day) async {
+    if (kIsWeb) {
+      _memoryHistory[day.date.toIso8601String()] = day;
+      return;
+    }
+    try {
+      final file = await _historyFileForDate(day.date);
+      await file.writeAsString(jsonEncode(day.toJson()));
+    } catch (e) {
+      debugPrint('Failed to persist assignments history: $e');
+    }
+  }
+
+  Future<RefereeAssignmentsDay?> loadOrFetchDay(DateTime date) async {
+    final cached = await loadCachedDay(date: date);
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      return await fetchAndCache(date: date);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<DateTime>> listCachedDates() async {
+    final dates = <DateTime>{};
+    if (_memoryCache != null) {
+      dates.add(_normalizeDate(_memoryCache!.date)!);
+    }
+    dates.addAll(
+      _memoryHistory.values.map((day) => _normalizeDate(day.date)!),
+    );
+    if (kIsWeb) {
+      final sorted = dates.toList()
+        ..sort((a, b) => b.compareTo(a));
+      return sorted;
+    }
+    try {
+      final dir = await _ensureHistoryDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final entities = await dir.list().toList();
+      for (final entity in entities) {
+        final name = p.basename(entity.path);
+        if (!name.endsWith('.json')) continue;
+        final datePart = name.replaceFirst(RegExp(r'\.json\$'), '');
+        try {
+          dates.add(DateTime.parse(datePart));
+        } catch (_) {
+          // ignore invalid filenames
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to enumerate history: $e');
+    }
+    final sorted = dates.toList()
+      ..sort((a, b) => b.compareTo(a));
+    return sorted;
+  }
+
   Future<File> _ensureCacheFile() async {
     if (_cachedFile != null) {
       return _cachedFile!;
@@ -182,6 +280,45 @@ class RefereeAssignmentsRepository {
     return file;
   }
 
+  Future<Directory> _ensureHistoryDirectory() async {
+    if (_cachedHistoryDirectory != null) {
+      return _cachedHistoryDirectory!;
+    }
+    _cachedHistoryDirectory = _createHistoryDirectory();
+    return _cachedHistoryDirectory!;
+  }
+
+  Future<Directory> _createHistoryDirectory() async {
+    final directory = await getApplicationSupportDirectory();
+    final historyDir = Directory(p.join(directory.path, _historyDirName));
+    if (!await historyDir.exists()) {
+      await historyDir.create(recursive: true);
+    }
+    return historyDir;
+  }
+
+  Future<File> _historyFileForDate(
+    DateTime date, {
+    bool createIfMissing = true,
+  }) async {
+    final normalized = _normalizeDate(date)!;
+    if (kIsWeb) {
+      throw UnsupportedError('History files are not supported on web');
+    }
+    final dir = await _ensureHistoryDirectory();
+    final fileName = '${normalized.toIso8601String()}.json';
+    final file = File(p.join(dir.path, fileName));
+    if (createIfMissing && !await file.exists()) {
+      await file.create(recursive: true);
+    }
+    return file;
+  }
+
+  DateTime? _normalizeDate(DateTime? date) {
+    if (date == null) return null;
+    return DateTime(date.year, date.month, date.day);
+  }
+
   Future<void> dispose() async {
     if (!kIsWeb) {
       try {
@@ -190,5 +327,21 @@ class RefereeAssignmentsRepository {
         // Ignore.
       }
     }
+  }
+
+  RefereeAssignmentsDay _normalizeAssignmentsDay(
+    RefereeAssignmentsDay day,
+    DateTime targetDate,
+  ) {
+    final normalizedDate = _normalizeDate(day.date) ?? targetDate;
+    if (normalizedDate == day.date && day.fetchedAt.isUtc) {
+      return day;
+    }
+    return RefereeAssignmentsDay(
+      date: normalizedDate,
+      fetchedAt: day.fetchedAt.isUtc ? day.fetchedAt : day.fetchedAt.toUtc(),
+      games: day.games,
+      replayCenterCrew: day.replayCenterCrew,
+    );
   }
 }
