@@ -8,6 +8,7 @@ String refereeAssetSlug(String name) {
 
 const Map<String, String> _refereeAssetLookup = {
   'aaron_smith': 'assets/referees/Aaron Smith.jpg',
+  'agon_abazi': 'assets/referees/Agon Abazi.jpg',
   'andy_nagy': 'assets/referees/Andy Nagy.jpg',
   'ashley_moyer_gleich': 'assets/referees/Ashley Moyer-Gleich.jpg',
   'ben_taylor': 'assets/referees/Ben Taylor.jpg',
@@ -72,7 +73,9 @@ const Map<String, String> _refereeAssetLookup = {
   'mousa_dagher': 'assets/referees/Mousa Dagher.jpg',
   'natalie_sago': 'assets/referees/Natalie Sago.jpg',
   'nate_green': 'assets/referees/Nate Green.jpg',
+  'nate_cearley': 'assets/referees/Nate Cearley.jpg',
   'nick_buchert': 'assets/referees/Nick Buchert.jpg',
+  'chelisa_painter': 'assets/referees/Chelisa Painter.jpg',
   'pat_fraher': 'assets/referees/Pat Fraher.jpg',
   'pat_oconnell': 'assets/referees/Pat O\'Connell.jpg',
   'phenizee_ransom': 'assets/referees/Phenizee Ransom.jpg',
