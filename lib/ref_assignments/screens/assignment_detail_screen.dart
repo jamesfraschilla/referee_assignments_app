@@ -198,17 +198,23 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                             ? _portraitExportSize
                             : _landscapeExportSize,
                       ),
-              expand: isPortrait,
+              expand: false,
             );
 
             if (!isPortrait) {
-              return Stack(
+              return Column(
                 children: [
-                  Positioned.fill(child: cardWrapper),
-                  Positioned(
-                    right: 24,
-                    bottom: 24,
-                    child: exportButton,
+                  Expanded(child: cardWrapper),
+                  const SizedBox(height: 20),
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [exportButton],
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -217,9 +223,13 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             return Column(
               children: [
                 Expanded(child: cardWrapper),
+                const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: exportButton,
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: exportButton,
+                  ),
                 ),
               ],
             );
@@ -261,7 +271,13 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
     setState(() => _isExporting = true);
     try {
-      final image = await boundary.toImage(pixelRatio: 1.0);
+      final widthRatio = targetSize.width / size.width;
+      final heightRatio = targetSize.height / size.height;
+      double pixelRatio = widthRatio > heightRatio ? widthRatio : heightRatio;
+      if (pixelRatio < 1.0) {
+        pixelRatio = 1.0;
+      }
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
       await _saveImage(image, targetSize: targetSize);
       image.dispose();
     } catch (e) {
@@ -416,8 +432,8 @@ class _ExportButton extends StatelessWidget {
       return SizedBox(width: double.infinity, child: button);
     }
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 180),
+    return SizedBox(
+      width: 160,
       child: button,
     );
   }

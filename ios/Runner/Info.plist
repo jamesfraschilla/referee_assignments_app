@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>App needs access to save exported referee assignments.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>App needs access to your photo library to save exported referee assignments.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
