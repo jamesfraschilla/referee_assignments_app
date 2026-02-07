@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,17 +23,19 @@ class AssignmentDetailScreen extends StatefulWidget {
     super.key,
     required this.assignment,
     required this.assignmentDate,
+    this.exportKey,
   });
 
   final RefereeGameAssignment assignment;
   final DateTime assignmentDate;
+  final GlobalKey? exportKey;
 
   @override
   State<AssignmentDetailScreen> createState() => _AssignmentDetailScreenState();
 }
 
 class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
-  final GlobalKey _exportKey = GlobalKey();
+  late final GlobalKey _exportKey = widget.exportKey ?? GlobalKey();
   bool _isExporting = false;
   Color _latestBackgroundColor = Colors.black;
   bool _forceCenteredLayout = false;
@@ -337,51 +340,17 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     required Size targetSize,
     Size? contentSize,
   }) async {
-    final int targetWidth = targetSize.width.toInt();
-    final int targetHeight = targetSize.height.toInt();
-    ui.Picture? picture;
-    ui.Image? processed;
     try {
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
-      final paint = ui.Paint();
-      if (contentSize == null) {
-        canvas.drawRect(
-          ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
-          paint..color = _latestBackgroundColor,
-        );
-        _drawFittedImage(
-          canvas,
-          image: image,
-          target: ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
-        );
-      } else {
-        final isDark = _latestBackgroundColor.computeLuminance() < 0.5;
-        canvas.drawRect(
-          ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
-          paint..color = Colors.white,
-        );
-        final contentRect = ui.Rect.fromLTWH(
-          0,
-          0,
-          contentSize.width,
-          contentSize.height,
-        );
-        canvas.drawRect(
-          contentRect,
-          paint..color = isDark ? Colors.black : Colors.white,
-        );
-        _drawFittedImage(canvas, image: image, target: contentRect);
-      }
-      picture = recorder.endRecording();
-      processed = await picture.toImage(targetWidth, targetHeight);
-      final byteData =
-          await processed.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
+      final pngBytes = await renderAssignmentPngBytes(
+        image,
+        targetSize: targetSize,
+        backgroundColor: _latestBackgroundColor,
+        contentSize: contentSize,
+      );
+      if (pngBytes == null) {
         _showSnackBar('Export failed: could not encode image.');
         return;
       }
-      final pngBytes = byteData.buffer.asUint8List();
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final result =
           await savePngImage(pngBytes, 'ref_assignment_$timestamp');
@@ -395,38 +364,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       _showSnackBar(result.success ? successMessage : failureMessage);
     } catch (e) {
       _showSnackBar('Export failed: $e');
-    } finally {
-      processed?.dispose();
-      picture?.dispose();
     }
-  }
-
-  void _drawFittedImage(
-    ui.Canvas canvas, {
-    required ui.Image image,
-    required ui.Rect target,
-  }) {
-    final widthScale = target.width / image.width;
-    double scaledWidth = target.width;
-    double scaledHeight = image.height * widthScale;
-    double offsetX = target.left;
-    double offsetY = target.top + (target.height - scaledHeight) / 2;
-    if (scaledHeight > target.height) {
-      final heightScale = target.height / image.height;
-      scaledHeight = target.height;
-      scaledWidth = image.width * heightScale;
-      offsetY = target.top;
-      offsetX = target.left + (target.width - scaledWidth) / 2;
-    }
-    final src = ui.Rect.fromLTWH(
-      0,
-      0,
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
-    final dst =
-        ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
-    canvas.drawImageRect(image, src, dst, Paint());
   }
 
   void _showSnackBar(String message) {
@@ -578,6 +516,89 @@ class _BackButton extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<Uint8List?> renderAssignmentPngBytes(
+  ui.Image image, {
+  required Size targetSize,
+  required Color backgroundColor,
+  Size? contentSize,
+}) async {
+  final int targetWidth = targetSize.width.toInt();
+  final int targetHeight = targetSize.height.toInt();
+  ui.Picture? picture;
+  ui.Image? processed;
+  try {
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final paint = ui.Paint();
+    if (contentSize == null) {
+      canvas.drawRect(
+        ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+        paint..color = backgroundColor,
+      );
+      _drawFittedImage(
+        canvas,
+        image: image,
+        target: ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+      );
+    } else {
+      final isDark = backgroundColor.computeLuminance() < 0.5;
+      canvas.drawRect(
+        ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+        paint..color = Colors.white,
+      );
+      final contentRect = ui.Rect.fromLTWH(
+        0,
+        0,
+        contentSize.width,
+        contentSize.height,
+      );
+      canvas.drawRect(
+        contentRect,
+        paint..color = isDark ? Colors.black : Colors.white,
+      );
+      _drawFittedImage(canvas, image: image, target: contentRect);
+    }
+    picture = recorder.endRecording();
+    processed = await picture.toImage(targetWidth, targetHeight);
+    final byteData =
+        await processed.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      return null;
+    }
+    return byteData.buffer.asUint8List();
+  } finally {
+    processed?.dispose();
+    picture?.dispose();
+  }
+}
+
+void _drawFittedImage(
+  ui.Canvas canvas, {
+  required ui.Image image,
+  required ui.Rect target,
+}) {
+  final widthScale = target.width / image.width;
+  double scaledWidth = target.width;
+  double scaledHeight = image.height * widthScale;
+  double offsetX = target.left;
+  double offsetY = target.top + (target.height - scaledHeight) / 2;
+  if (scaledHeight > target.height) {
+    final heightScale = target.height / image.height;
+    scaledHeight = target.height;
+    scaledWidth = image.width * heightScale;
+    offsetY = target.top;
+    offsetX = target.left + (target.width - scaledWidth) / 2;
+  }
+  final src = ui.Rect.fromLTWH(
+    0,
+    0,
+    image.width.toDouble(),
+    image.height.toDouble(),
+  );
+  final dst = ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
+  canvas.drawImageRect(image, src, dst, Paint());
 }
 
 int _rolePriority(OfficialRole role) {

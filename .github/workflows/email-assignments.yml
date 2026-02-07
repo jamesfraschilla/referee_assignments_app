@@ -1,0 +1,67 @@
+name: Email Referee Assignments
+
+on:
+  schedule:
+    - cron: "15 13,14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email-assignments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Prepare Assignment
+        id: prepare
+        run: dart run tool/prepare_assignment.dart
+        env:
+          TEAM_ID: WAS
+          TEAM_ALIASES: WAS,WASHINGTON,WIZARDS,WASHINGTON WIZARDS
+          RENDER_CONFIG: build/render_config.json
+
+      - name: Load Email Metadata
+        id: meta
+        if: steps.prepare.outputs.should_send == 'true'
+        run: |
+          python3 - <<'PY'
+          import json, os
+          with open('build/render_config.json', 'r', encoding='utf-8') as f:
+              cfg = json.load(f)
+          def write_output(key, value):
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+                  out.write(f"{key}={value}\n")
+          write_output('subject', cfg.get('subject', 'Referee Assignments'))
+          write_output('body', cfg.get('body', 'Attached is the referee assignments image.'))
+          write_output('attachment', cfg.get('outputPath', 'build/assignment.png'))
+          PY
+
+      - name: Render Image
+        if: steps.prepare.outputs.should_send == 'true'
+        run: flutter test test/render_assignment_test.dart --dart-define=RENDER_CONFIG=build/render_config.json
+        env:
+          RENDER_CONFIG: build/render_config.json
+
+      - name: Send Email
+        if: steps.prepare.outputs.should_send == 'true'
+        run: python3 tool/send_email.py
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
+          EMAIL_SUBJECT: ${{ steps.meta.outputs.subject }}
+          EMAIL_BODY: ${{ steps.meta.outputs.body }}
+          ATTACHMENT: ${{ steps.meta.outputs.attachment }}

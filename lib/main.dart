@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'ref_assignments/app_theme.dart';
 import 'ref_assignments/background.dart';
 import 'ref_assignments/screens/assignments_screen.dart';
 import 'ref_assignments/theme_storage.dart';
@@ -68,63 +69,14 @@ class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Colors.blueAccent;
-    final lightScheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: Brightness.light,
-    );
-    const darkSurface = Color.fromARGB(255, 20, 27, 38);
-    final darkScheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: Brightness.dark,
-    ).copyWith(
-      surface: darkSurface,
-      surfaceContainerHighest: darkSurface,
-      surfaceTint: Colors.transparent,
-      primaryContainer: darkSurface.withValues(alpha: 0.85),
-    );
+    final lightTheme = buildLightTheme();
+    final darkTheme = buildDarkTheme();
     return MaterialApp(
       title: 'NBA Referee Assignments',
       debugShowCheckedModeBanner: false,
       themeMode: _mode,
-      theme: ThemeData(
-        colorScheme: lightScheme,
-        useMaterial3: true,
-        fontFamily: 'DIN',
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.black,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            side: const BorderSide(width: 2, color: Colors.orange),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: darkScheme,
-        scaffoldBackgroundColor: darkSurface,
-        useMaterial3: true,
-        fontFamily: 'DIN',
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            side: const BorderSide(width: 2, color: Colors.orange),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: Colors.white),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
       home: RefereeAssignmentsScreen(
         isDarkMode: _mode == ThemeMode.dark,
         onToggleTheme: _toggleTheme,
