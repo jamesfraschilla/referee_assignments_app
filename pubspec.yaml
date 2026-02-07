@@ -67,6 +67,7 @@ flutter:
 
   assets:
     - assets/referees/
+    - assets/referees_web/
 
   fonts:
     - family: DIN

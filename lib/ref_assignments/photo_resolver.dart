@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 String refereeAssetSlug(String name) {
   final lower = name.toLowerCase().trim();
   final normalized = lower.replaceAll('&', 'and').replaceAll("'", '');
@@ -104,5 +106,9 @@ const Map<String, String> _refereeAssetLookup = {
 
 String refereeAssetPath(String name, {String extension = 'jpg'}) {
   final slug = refereeAssetSlug(name);
-  return _refereeAssetLookup[slug] ?? 'assets/referees/$slug.$extension';
+  final path = _refereeAssetLookup[slug] ?? 'assets/referees/$slug.$extension';
+  if (!kIsWeb) {
+    return path;
+  }
+  return path.replaceFirst('assets/referees/', 'assets/referees_web/');
 }
