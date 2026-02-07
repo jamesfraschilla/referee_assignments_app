@@ -216,42 +216,51 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               expand: false,
             );
 
-            if (!isPortrait) {
-              return Column(
-                children: [
-                  Expanded(child: cardWrapper),
-                  const SizedBox(height: 20),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [exportButton],
+            final bodyContent = !isPortrait
+                ? Column(
+                    children: [
+                      Expanded(child: cardWrapper),
+                      const SizedBox(height: 20),
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [exportButton],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            }
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Expanded(child: cardWrapper),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              exportButton,
+                              const SizedBox(height: 12),
+                              wasExportButton,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
 
-            return Column(
+            return Stack(
               children: [
-                Expanded(child: cardWrapper),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        exportButton,
-                        const SizedBox(height: 12),
-                        wasExportButton,
-                      ],
-                    ),
-                  ),
+                bodyContent,
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _BackButton(backgroundColor: backgroundColor),
                 ),
               ],
             );
@@ -539,6 +548,34 @@ class _OfficialsLayout extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.backgroundColor});
+
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    if (!canPop) {
+      return const SizedBox.shrink();
+    }
+    final isDark = backgroundColor.computeLuminance() < 0.5;
+    final foreground = isDark ? Colors.white : Colors.black;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: foreground.withValues(alpha: 0.3)),
+      ),
+      child: IconButton(
+        tooltip: 'Back',
+        icon: Icon(Icons.arrow_back, color: foreground),
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
     );
   }
 }
