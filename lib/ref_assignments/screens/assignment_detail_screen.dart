@@ -1,12 +1,12 @@
-import 'dart:io' as io;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:intl/intl.dart';
 
+import '../image_saver.dart';
 import '../models.dart';
 import '../widgets/official_avatar.dart';
 
@@ -189,9 +189,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               ),
             );
 
+            final canExport = true;
             final exportButton = _ExportButton(
               isBusy: _isExporting,
-              onPressed: _isExporting
+              label: kIsWeb ? 'Download PNG' : 'Export',
+              onPressed: _isExporting || !canExport
                   ? null
                   : () => _exportImage(
                         targetSize: isPortrait
@@ -339,52 +341,23 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         return;
       }
       final pngBytes = byteData.buffer.asUint8List();
-      final timestamp =
-          DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      if (_isIosSimulator) {
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final result =
+          await savePngImage(pngBytes, 'ref_assignment_$timestamp');
+      if (result.isSimulator) {
         _showSnackBar('Preview exported. Photos app unavailable on simulator.');
         return;
       }
-      final result = await ImageGallerySaver.saveImage(
-        pngBytes,
-        name: 'ref_assignment_$timestamp',
-        isReturnImagePathOfIOS: true,
-      );
-      final success = _isSaveSuccessful(result);
-      _showSnackBar(
-        success ? 'Exported to Photos.' : 'Export failed while saving.',
-      );
+      final successMessage = kIsWeb ? 'Download started.' : 'Exported to Photos.';
+      final failureMessage =
+          kIsWeb ? 'Download failed.' : 'Export failed while saving.';
+      _showSnackBar(result.success ? successMessage : failureMessage);
     } catch (e) {
       _showSnackBar('Export failed: $e');
     } finally {
       processed?.dispose();
       picture?.dispose();
     }
-  }
-
-  bool get _isIosSimulator {
-    try {
-      return io.Platform.isIOS &&
-          io.Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
-    } catch (_) {
-      return false;
-    }
-  }
-
-  bool _isSaveSuccessful(dynamic result) {
-    if (result is Map) {
-      final keys = ['isSuccess', 'success', 'status'];
-      for (final key in keys) {
-        final value = result[key];
-        if (value is bool) {
-          return value;
-        }
-        if (value is String) {
-          return value.toLowerCase() == 'success';
-        }
-      }
-    }
-    return false;
   }
 
   void _showSnackBar(String message) {
@@ -400,42 +373,41 @@ class _ExportButton extends StatelessWidget {
   const _ExportButton({
     required this.isBusy,
     required this.onPressed,
+    required this.label,
     this.expand = false,
   });
 
   final bool isBusy;
   final VoidCallback? onPressed;
+  final String label;
   final bool expand;
 
   @override
   Widget build(BuildContext context) {
+    final child = isBusy
+        ? Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 12),
+              Text('Exporting...'),
+            ],
+          )
+        : Text(label);
+
     final button = ElevatedButton(
       onPressed: onPressed,
-      child: isBusy
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Exporting...'),
-              ],
-            )
-          : const Text('Export'),
+      child: child,
     );
-
     if (expand) {
       return SizedBox(width: double.infinity, child: button);
     }
-
-    return SizedBox(
-      width: 160,
-      child: button,
-    );
+    return SizedBox(width: 160, child: button);
   }
 }
 

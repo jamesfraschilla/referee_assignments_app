@@ -89,6 +89,9 @@ class _OfficialPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final displayName = _compactName(official.name);
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth =
+        (_previewAvatarSize * devicePixelRatio).clamp(1, double.infinity).round();
 
     return SizedBox(
       width: _previewAvatarSize + 12,
@@ -101,6 +104,7 @@ class _OfficialPreview extends StatelessWidget {
               refereeAssetPath(official.name),
               height: _previewAvatarSize,
               width: _previewAvatarSize,
+              cacheWidth: cacheWidth,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
               errorBuilder: (context, error, stackTrace) {

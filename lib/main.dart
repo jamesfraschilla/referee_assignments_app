@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'ref_assignments/background.dart';
 import 'ref_assignments/screens/assignments_screen.dart';
+import 'ref_assignments/theme_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +30,7 @@ class RefereeAssignmentsApp extends StatefulWidget {
 
 class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
   ThemeMode _mode = ThemeMode.dark;
-  static const _themeFileName = 'theme_mode.txt';
+  final ThemeStorage _themeStorage = ThemeStorage();
 
   @override
   void initState() {
@@ -41,20 +39,16 @@ class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
   }
 
   Future<void> _loadTheme() async {
-    if (kIsWeb) return;
     try {
-      final file = await _themeFile();
-      if (await file.exists()) {
-        final value = (await file.readAsString()).trim();
-        if (!mounted) return;
-        setState(() {
-          _mode = value == 'light'
-              ? ThemeMode.light
-              : value == 'dark'
-                  ? ThemeMode.dark
-                  : ThemeMode.dark;
-        });
-      }
+      final value = await _themeStorage.readMode();
+      if (value == null || !mounted) return;
+      setState(() {
+        _mode = value == 'light'
+            ? ThemeMode.light
+            : value == 'dark'
+                ? ThemeMode.dark
+                : ThemeMode.dark;
+      });
     } catch (e) {
       debugPrint('Failed to load theme preference: $e');
     }
@@ -63,21 +57,13 @@ class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
   Future<void> _toggleTheme() async {
     final next = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     setState(() => _mode = next);
-    if (kIsWeb) return;
     try {
-      final file = await _themeFile();
-      await file.writeAsString(next == ThemeMode.light ? 'light' : 'dark');
+      await _themeStorage.writeMode(
+        next == ThemeMode.light ? 'light' : 'dark',
+      );
     } catch (e) {
       debugPrint('Failed to save theme preference: $e');
     }
-  }
-
-  Future<File> _themeFile() async {
-    final baseDir = await getApplicationSupportDirectory();
-    if (!await baseDir.exists()) {
-      await baseDir.create(recursive: true);
-    }
-    return File(p.join(baseDir.path, _themeFileName));
   }
 
   @override

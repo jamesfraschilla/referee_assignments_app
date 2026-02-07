@@ -25,6 +25,9 @@ class OfficialAvatar extends StatelessWidget {
     final roleLabel = officialRoleLabel(official.role);
     final textTheme = theme.textTheme;
     final borderRadius = BorderRadius.circular(16);
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth =
+        (size * devicePixelRatio).clamp(1, double.infinity).round();
     final nameParts = _NameParts.from(official.name);
     final lineOneSegments = <String>[
       if (official.number != null) '#${official.number}',
@@ -75,6 +78,7 @@ class OfficialAvatar extends StatelessWidget {
             borderRadius: borderRadius,
             child: Image.asset(
               refereeAssetPath(official.name),
+              cacheWidth: cacheWidth,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
               errorBuilder: (context, error, stackTrace) {
