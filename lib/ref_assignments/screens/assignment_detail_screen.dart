@@ -12,6 +12,8 @@ import '../widgets/official_avatar.dart';
 
 const Size _portraitExportSize = Size(1536, 2592);
 const Size _landscapeExportSize = Size(3300, 2550);
+const Size _wasExportSize = Size(3840, 2160);
+const Size _wasContentSize = Size(802, 1300);
 const double _portraitAspectRatio = 1536 / 2592;
 const double _landscapeAspectRatio = 3300 / 2550;
 
@@ -202,6 +204,17 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                       ),
               expand: false,
             );
+            final wasExportButton = _ExportButton(
+              isBusy: _isExporting,
+              label: kIsWeb ? 'Download WAS PNG' : 'Export WAS',
+              onPressed: _isExporting || !canExport
+                  ? null
+                  : () => _exportImage(
+                        targetSize: _wasExportSize,
+                        contentSize: _wasContentSize,
+                      ),
+              expand: false,
+            );
 
             if (!isPortrait) {
               return Column(
@@ -230,7 +243,14 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                   child: Align(
                     alignment: Alignment.center,
-                    child: exportButton,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        exportButton,
+                        const SizedBox(height: 12),
+                        wasExportButton,
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -241,7 +261,10 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     );
   }
 
-  Future<void> _exportImage({required Size targetSize}) async {
+  Future<void> _exportImage({
+    required Size targetSize,
+    Size? contentSize,
+  }) async {
     final needsCentering = targetSize == _landscapeExportSize;
     var centeringApplied = false;
     if (needsCentering && !_forceCenteredLayout) {
@@ -280,7 +303,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         pixelRatio = 1.0;
       }
       final image = await boundary.toImage(pixelRatio: pixelRatio);
-      await _saveImage(image, targetSize: targetSize);
+      await _saveImage(
+        image,
+        targetSize: targetSize,
+        contentSize: contentSize,
+      );
       image.dispose();
     } catch (e) {
       _showSnackBar('Export failed: $e');
@@ -299,6 +326,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   Future<void> _saveImage(
     ui.Image image, {
     required Size targetSize,
+    Size? contentSize,
   }) async {
     final int targetWidth = targetSize.width.toInt();
     final int targetHeight = targetSize.height.toInt();
@@ -308,30 +336,34 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder);
       final paint = ui.Paint();
-      canvas.drawRect(
-        ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
-        paint..color = _latestBackgroundColor,
-      );
-      final widthScale = targetSize.width / image.width;
-      double scaledWidth = targetSize.width;
-      double scaledHeight = image.height * widthScale;
-      double offsetX = 0;
-      double offsetY = (targetSize.height - scaledHeight) / 2;
-      if (scaledHeight > targetSize.height) {
-        final heightScale = targetSize.height / image.height;
-        scaledHeight = targetSize.height;
-        scaledWidth = image.width * heightScale;
-        offsetY = 0;
-        offsetX = (targetSize.width - scaledWidth) / 2;
+      if (contentSize == null) {
+        canvas.drawRect(
+          ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+          paint..color = _latestBackgroundColor,
+        );
+        _drawFittedImage(
+          canvas,
+          image: image,
+          target: ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+        );
+      } else {
+        final isDark = _latestBackgroundColor.computeLuminance() < 0.5;
+        canvas.drawRect(
+          ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height),
+          paint..color = Colors.white,
+        );
+        final contentRect = ui.Rect.fromLTWH(
+          0,
+          0,
+          contentSize.width,
+          contentSize.height,
+        );
+        canvas.drawRect(
+          contentRect,
+          paint..color = isDark ? Colors.black : Colors.white,
+        );
+        _drawFittedImage(canvas, image: image, target: contentRect);
       }
-      final src = ui.Rect.fromLTWH(
-        0,
-        0,
-        image.width.toDouble(),
-        image.height.toDouble(),
-      );
-      final dst = ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
-      canvas.drawImageRect(image, src, dst, Paint());
       picture = recorder.endRecording();
       processed = await picture.toImage(targetWidth, targetHeight);
       final byteData =
@@ -358,6 +390,34 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       processed?.dispose();
       picture?.dispose();
     }
+  }
+
+  void _drawFittedImage(
+    ui.Canvas canvas, {
+    required ui.Image image,
+    required ui.Rect target,
+  }) {
+    final widthScale = target.width / image.width;
+    double scaledWidth = target.width;
+    double scaledHeight = image.height * widthScale;
+    double offsetX = target.left;
+    double offsetY = target.top + (target.height - scaledHeight) / 2;
+    if (scaledHeight > target.height) {
+      final heightScale = target.height / image.height;
+      scaledHeight = target.height;
+      scaledWidth = image.width * heightScale;
+      offsetY = target.top;
+      offsetX = target.left + (target.width - scaledWidth) / 2;
+    }
+    final src = ui.Rect.fromLTWH(
+      0,
+      0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+    final dst =
+        ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
+    canvas.drawImageRect(image, src, dst, Paint());
   }
 
   void _showSnackBar(String message) {
