@@ -68,21 +68,31 @@ void main() {
     if (boundary == null) {
       throw Exception('Failed to find render boundary.');
     }
-    final image = await boundary.toImage(pixelRatio: 1.0);
+    print('Render: begin toImage');
+    final image = await boundary
+        .toImage(pixelRatio: 1.0)
+        .timeout(const Duration(seconds: 90), onTimeout: () {
+      throw Exception('Render timed out while capturing image.');
+    });
+    print('Render: captured image ${image.width}x${image.height}');
     final backgroundColor = themeMode == ThemeMode.dark
         ? const Color.fromARGB(255, 0, 0, 0)
         : const Color.fromARGB(255, 255, 255, 255);
 
+    print('Render: begin encode PNG');
     final pngBytes = await renderAssignmentPngBytes(
       image,
       targetSize: targetSize,
       backgroundColor: backgroundColor,
       contentSize: contentSize,
-    );
+    ).timeout(const Duration(minutes: 2), onTimeout: () {
+      throw Exception('Render timed out while encoding PNG.');
+    });
     image.dispose();
     if (pngBytes == null) {
       throw Exception('Failed to encode PNG.');
     }
+    print('Render: PNG bytes ${pngBytes.length}');
 
     final outputFile = File(outputPath);
     outputFile.parent.createSync(recursive: true);
