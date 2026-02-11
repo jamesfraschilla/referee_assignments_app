@@ -18,7 +18,9 @@ jobs:
       - name: Guard schedule (America/New_York 09:15)
         id: schedule_guard
         run: |
-          if [ "$(TZ=America/New_York date +%H%M)" = "0915" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$(TZ=America/New_York date +%H%M)" = "0915" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
