@@ -2,7 +2,7 @@ name: Email Referee Assignments
 
 on:
   schedule:
-    - cron: "15 13,14 * * *"
+    - cron: "15 14 * * *"
   workflow_dispatch:
 
 permissions:
