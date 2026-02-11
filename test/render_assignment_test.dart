@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -14,6 +15,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Render assignment export image', (tester) async {
+    _registerTestAssetHandler();
+
     final configPath = Platform.environment['RENDER_CONFIG'] ??
         const String.fromEnvironment('RENDER_CONFIG',
             defaultValue: 'build/render_config.json');
@@ -86,6 +89,29 @@ void main() {
     outputFile.writeAsBytesSync(pngBytes);
   });
 }
+
+void _registerTestAssetHandler() {
+  const channel = 'flutter/assets';
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  binding.defaultBinaryMessenger.setMockMessageHandler(channel, (message) async {
+    if (message == null) return null;
+    final assetKey = utf8.decode(message.buffer.asUint8List());
+    final file = File(assetKey);
+    if (file.existsSync()) {
+      final bytes = await file.readAsBytes();
+      return ByteData.view(Uint8List.fromList(bytes).buffer);
+    }
+    final placeholder = _transparentPngBytes;
+    return ByteData.view(Uint8List.fromList(placeholder).buffer);
+  });
+}
+
+final List<int> _transparentPngBytes = <int>[
+  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0,
+  1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65,
+  84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10, 34, 181, 0, 0, 0, 0, 73,
+  69, 78, 68, 174, 66, 96, 130,
+];
 
 Size _sizeFromList(dynamic list) {
   if (list is List && list.length >= 2) {

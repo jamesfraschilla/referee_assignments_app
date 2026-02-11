@@ -180,6 +180,17 @@ void _writeOutputs(
 
   outputFile.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(payload));
 
+  stdout.writeln('should_send=${shouldSend ? 'true' : 'false'}');
+  if (reason != null) {
+    stdout.writeln('reason=$reason');
+  }
+  if (assignment != null) {
+    stdout.writeln('matchup=${assignment.displayMatchup}');
+  }
+  if (date != null) {
+    stdout.writeln('assignment_date=${date.toIso8601String()}');
+  }
+
   final githubOutput = Platform.environment['GITHUB_OUTPUT'];
   if (githubOutput != null && githubOutput.isNotEmpty) {
     final file = File(githubOutput);
