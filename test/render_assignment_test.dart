@@ -96,6 +96,15 @@ void _registerTestAssetHandler() {
   binding.defaultBinaryMessenger.setMockMessageHandler(channel, (message) async {
     if (message == null) return null;
     final assetKey = utf8.decode(message.buffer.asUint8List());
+    if (assetKey == 'AssetManifest.bin') {
+      return _emptyAssetManifestBin();
+    }
+    if (assetKey == 'AssetManifest.json') {
+      return _byteDataFromString('{}');
+    }
+    if (assetKey == 'FontManifest.json') {
+      return _byteDataFromString('[]');
+    }
     final file = File(assetKey);
     if (file.existsSync()) {
       final bytes = await file.readAsBytes();
@@ -104,6 +113,16 @@ void _registerTestAssetHandler() {
     final placeholder = _transparentPngBytes;
     return ByteData.view(Uint8List.fromList(placeholder).buffer);
   });
+}
+
+ByteData _emptyAssetManifestBin() {
+  const codec = StandardMessageCodec();
+  return codec.encodeMessage(<String, List<String>>{}) ?? ByteData(0);
+}
+
+ByteData _byteDataFromString(String value) {
+  final bytes = utf8.encode(value);
+  return ByteData.view(Uint8List.fromList(bytes).buffer);
 }
 
 final List<int> _transparentPngBytes = <int>[
