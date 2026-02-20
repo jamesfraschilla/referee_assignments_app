@@ -74,13 +74,13 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         .where((official) => official.role == OfficialRole.alternate)
         .map((official) => official.name)
         .toList();
-    final matchupLabel = assignment.displayMatchup.toUpperCase();
-    final baseMatchupStyle = theme.textTheme.headlineMedium ??
+    const headerLabel = "TONIGHT'S OFFICIALS";
+    final baseHeaderStyle = theme.textTheme.headlineMedium ??
         theme.textTheme.displaySmall ??
         theme.textTheme.titleLarge ??
         theme.textTheme.titleMedium;
-    final matchupBaseSize = baseMatchupStyle?.fontSize ?? 32;
-    final matchupStyle = (baseMatchupStyle ??
+    final headerBaseSize = baseHeaderStyle?.fontSize ?? 32;
+    final headerStyle = (baseHeaderStyle ??
             const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w700,
@@ -88,7 +88,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         .copyWith(
       fontWeight: FontWeight.bold,
       color: textColor,
-      fontSize: matchupBaseSize * 1.3,
+      fontSize: headerBaseSize * 1.3,
     );
 
     return Scaffold(
@@ -129,8 +129,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          matchupLabel,
-                          style: matchupStyle,
+                          headerLabel,
+                          style: headerStyle,
                           maxLines: 1,
                           textAlign: TextAlign.center,
                         ),
