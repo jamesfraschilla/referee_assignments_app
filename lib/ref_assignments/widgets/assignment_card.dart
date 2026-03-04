@@ -238,6 +238,11 @@ class _CardExportButtonsState extends State<_CardExportButtons> {
       AssignmentExportFormat.landscape,
       AssignmentExportFormat.was,
     ];
+    const labels = {
+      AssignmentExportFormat.portrait: 'Portrait',
+      AssignmentExportFormat.landscape: 'Landscape',
+      AssignmentExportFormat.was: 'WAS',
+    };
 
     return SizedBox(
       width: 120,
@@ -246,7 +251,7 @@ class _CardExportButtonsState extends State<_CardExportButtons> {
         children: [
           for (var index = 0; index < formats.length; index++) ...[
             _ExportMiniButton(
-              label: assignmentExportButtonLabel(formats[index]),
+              label: labels[formats[index]]!,
               isBusy: _activeFormat == formats[index],
               onPressed: _activeFormat != null
                   ? null
@@ -304,6 +309,11 @@ class _ExportMiniButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          side: const BorderSide(width: 1, color: Colors.white),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           textStyle: Theme.of(
             context,

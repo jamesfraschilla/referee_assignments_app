@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'ref_assignments/app_theme.dart';
 import 'ref_assignments/background.dart';
@@ -9,6 +9,7 @@ import 'ref_assignments/screens/assignments_screen.dart';
 import 'ref_assignments/theme_storage.dart';
 
 Future<void> main() async {
+  debugPaintBaselinesEnabled = false;
   WidgetsFlutterBinding.ensureInitialized();
   try {
     final background = RefereeAssignmentsBackgroundService.instance;
@@ -47,8 +48,8 @@ class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
         _mode = value == 'light'
             ? ThemeMode.light
             : value == 'dark'
-                ? ThemeMode.dark
-                : ThemeMode.dark;
+            ? ThemeMode.dark
+            : ThemeMode.dark;
       });
     } catch (e) {
       debugPrint('Failed to load theme preference: $e');
@@ -59,9 +60,7 @@ class _RefereeAssignmentsAppState extends State<RefereeAssignmentsApp> {
     final next = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     setState(() => _mode = next);
     try {
-      await _themeStorage.writeMode(
-        next == ThemeMode.light ? 'light' : 'dark',
-      );
+      await _themeStorage.writeMode(next == ThemeMode.light ? 'light' : 'dark');
     } catch (e) {
       debugPrint('Failed to save theme preference: $e');
     }
