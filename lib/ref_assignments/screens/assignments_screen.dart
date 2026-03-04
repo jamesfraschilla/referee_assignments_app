@@ -1,9 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../responsive.dart';
 import '../store.dart';
 import '../widgets/assignment_card.dart';
 import 'assignment_detail_screen.dart';
@@ -30,7 +31,6 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     _store = RefereeAssignmentsStore()..addListener(_onStoreChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _store.loadInitial();
@@ -49,8 +49,12 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
     if (!mounted) return;
     if (state.error != null &&
         state.status != RefereeAssignmentsStatus.loading) {
+      final errorText = state.error.toString();
       setState(() {
-        _snackbarMessage ??= 'Failed to fetch latest assignments.';
+        _snackbarMessage ??=
+            kIsWeb && errorText.contains('REF_ASSIGNMENTS_WEB_PROXY')
+            ? 'Web requests are blocked by CORS. Configure REF_ASSIGNMENTS_WEB_PROXY for the browser build.'
+            : 'Failed to fetch latest assignments.';
       });
     } else {
       setState(() {
@@ -140,15 +144,25 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
 
     final day = state.day;
     if (day == null || day.games.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 200),
-            Center(child: Text('No games posted for today yet.')),
-          ],
-        ),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final contentMaxWidth = _contentMaxWidth(constraints.maxWidth);
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentMaxWidth),
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 200),
+                    Center(child: Text('No games posted for today yet.')),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       );
     }
 
@@ -156,42 +170,61 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
       day.fetchedAt.toLocal(),
     );
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 24),
-        itemCount: day.games.length + 1,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Updated $lastUpdatedLabel',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.secondary,
-                ),
-              ),
-            );
-          }
-          final assignment = day.games[index - 1];
-          return AssignmentCard(
-            assignment: assignment,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AssignmentDetailScreen(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentMaxWidth = _contentMaxWidth(constraints.maxWidth);
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 24),
+                itemCount: day.games.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'Updated $lastUpdatedLabel',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.secondary,
+                        ),
+                      ),
+                    );
+                  }
+                  final assignment = day.games[index - 1];
+                  return AssignmentCard(
                     assignment: assignment,
-                    assignmentDate: day.date,
-                  ),
-                ),
-              ).then((_) => SystemChrome.setPreferredOrientations(
-                    const [DeviceOrientation.portraitUp],
-                  ));
-            },
-          );
-        },
-      ),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AssignmentDetailScreen(
+                            assignment: assignment,
+                            assignmentDate: day.date,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  double _contentMaxWidth(double availableWidth) {
+    switch (screenSizeForWidth(availableWidth)) {
+      case ScreenSize.compact:
+        return availableWidth;
+      case ScreenSize.medium:
+        return 760;
+      case ScreenSize.expanded:
+        return 920;
+    }
   }
 }
 
@@ -216,10 +249,7 @@ class _DayDropdown extends StatelessWidget {
         .map(
           (date) => DropdownMenuItem<DateTime>(
             value: date,
-            child: Text(
-              _labelForDate(date),
-              style: theme.textTheme.bodyMedium,
-            ),
+            child: Text(_labelForDate(date), style: theme.textTheme.bodyMedium),
           ),
         )
         .toList();

@@ -9,15 +9,17 @@ import 'parser.dart';
 
 class RefereeAssignmentsRepository {
   RefereeAssignmentsRepository({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   static final RefereeAssignmentsRepository instance =
       RefereeAssignmentsRepository();
 
-  static const _endpoint =
-      'https://official.nba.com/referee-assignments/';
+  static const _endpoint = 'https://official.nba.com/referee-assignments/';
   static const _apiEndpoint =
       'https://official.nba.com/wp-json/api/v1/get-game-officials';
+  static const _webProxyTemplate = String.fromEnvironment(
+    'REF_ASSIGNMENTS_WEB_PROXY',
+  );
 
   final http.Client _client;
   final RefereeAssignmentParser _parser = RefereeAssignmentParser();
@@ -68,14 +70,11 @@ class RefereeAssignmentsRepository {
   Future<RefereeAssignmentsDay> _fetchFromApi(DateTime targetDate) async {
     final formattedDate = DateFormat('yyyy-MM-dd').format(targetDate);
     final uri = Uri.parse('$_apiEndpoint?date=$formattedDate');
-    final response = await _client.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-      },
-    );
+    final response = await _get(uri, headers: {'Accept': 'application/json'});
     if (response.statusCode != 200) {
-      throw Exception('Failed to load assignments API: HTTP ${response.statusCode}');
+      throw Exception(
+        'Failed to load assignments API: HTTP ${response.statusCode}',
+      );
     }
     final body = response.body;
     final map = jsonDecode(body);
@@ -87,11 +86,50 @@ class RefereeAssignmentsRepository {
 
   Future<RefereeAssignmentsDay> _fetchFromHtml() async {
     final uri = Uri.parse(_endpoint);
-    final response = await _client.get(uri);
+    final response = await _get(uri);
     if (response.statusCode != 200) {
-      throw Exception('Failed to load assignments page: HTTP ${response.statusCode}');
+      throw Exception(
+        'Failed to load assignments page: HTTP ${response.statusCode}',
+      );
     }
     return _parser.parse(response.body);
+  }
+
+  Future<http.Response> _get(Uri uri, {Map<String, String>? headers}) async {
+    final targetUri = _proxyUri(uri);
+    try {
+      return await _client.get(targetUri, headers: headers);
+    } on http.ClientException catch (e) {
+      if (_webProxyTemplate.isEmpty) {
+        throw Exception(
+          'Browser blocked access to official.nba.com. '
+          'Set REF_ASSIGNMENTS_WEB_PROXY to a same-origin or CORS-enabled '
+          'proxy URL for web builds.',
+        );
+      }
+      throw Exception(
+        'Failed to fetch assignments via configured web proxy '
+        '($_webProxyTemplate): $e',
+      );
+    }
+  }
+
+  Uri _proxyUri(Uri uri) {
+    if (_webProxyTemplate.isEmpty) {
+      return uri;
+    }
+    if (_webProxyTemplate.contains('{url}')) {
+      return Uri.parse(
+        _webProxyTemplate.replaceFirst(
+          '{url}',
+          Uri.encodeComponent(uri.toString()),
+        ),
+      );
+    }
+    final proxyUri = Uri.parse(_webProxyTemplate);
+    final queryParameters = Map<String, String>.from(proxyUri.queryParameters);
+    queryParameters.putIfAbsent('url', () => uri.toString());
+    return proxyUri.replace(queryParameters: queryParameters);
   }
 
   Future<void> _saveCache(RefereeAssignmentsDay day) async {
@@ -119,9 +157,7 @@ class RefereeAssignmentsRepository {
     if (_memoryCache != null) {
       dates.add(_normalizeDate(_memoryCache!.date)!);
     }
-    dates.addAll(
-      _memoryHistory.values.map((day) => _normalizeDate(day.date)!),
-    );
+    dates.addAll(_memoryHistory.values.map((day) => _normalizeDate(day.date)!));
     final sorted = dates.toList()..sort((a, b) => b.compareTo(a));
     return sorted;
   }

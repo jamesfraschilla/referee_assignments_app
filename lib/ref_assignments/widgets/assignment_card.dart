@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../photo_resolver.dart';
+import '../responsive.dart';
 
 const double _previewAvatarSize = 64;
 
@@ -13,40 +14,60 @@ class AssignmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-
     final officials = assignment.officials
         .where((official) => official.role != OfficialRole.alternate)
         .toList();
     final previewOfficials = officials.take(3).toList();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                assignment.displayMatchup,
-                style: textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (previewOfficials.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _AssignmentPreviewRow(officials: previewOfficials),
-              ],
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final theme = Theme.of(context);
+        final textTheme = theme.textTheme;
+        final screenSize = screenSizeForWidth(constraints.maxWidth);
+        final horizontalMargin = switch (screenSize) {
+          ScreenSize.compact => 12.0,
+          ScreenSize.medium => 16.0,
+          ScreenSize.expanded => 20.0,
+        };
+        final contentPadding = switch (screenSize) {
+          ScreenSize.compact => const EdgeInsets.fromLTRB(18, 16, 18, 12),
+          ScreenSize.medium => const EdgeInsets.fromLTRB(22, 18, 22, 14),
+          ScreenSize.expanded => const EdgeInsets.fromLTRB(24, 20, 24, 16),
+        };
+
+        return Card(
+          margin: EdgeInsets.symmetric(
+            horizontal: horizontalMargin,
+            vertical: 6,
           ),
-        ),
-      ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Padding(
+              padding: contentPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    assignment.displayMatchup,
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (previewOfficials.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _AssignmentPreviewRow(officials: previewOfficials),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -62,25 +83,32 @@ class _AssignmentPreviewRow extends StatelessWidget {
     final textStyle = theme.textTheme.bodySmall?.copyWith(
       fontWeight: FontWeight.w600,
     );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: officials
-          .map(
-            (official) => _OfficialPreview(
-              official: official,
-              nameStyle: textStyle,
-            ),
-          )
-          .toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenSize = screenSizeForWidth(constraints.maxWidth);
+        final spacing = switch (screenSize) {
+          ScreenSize.compact => 16.0,
+          ScreenSize.medium => 24.0,
+          ScreenSize.expanded => 32.0,
+        };
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: spacing,
+          runSpacing: 12,
+          children: officials
+              .map(
+                (official) =>
+                    _OfficialPreview(official: official, nameStyle: textStyle),
+              )
+              .toList(),
+        );
+      },
     );
   }
 }
 
 class _OfficialPreview extends StatelessWidget {
-  const _OfficialPreview({
-    required this.official,
-    required this.nameStyle,
-  });
+  const _OfficialPreview({required this.official, required this.nameStyle});
 
   final RefereeOfficial official;
   final TextStyle? nameStyle;
@@ -90,8 +118,9 @@ class _OfficialPreview extends StatelessWidget {
     final theme = Theme.of(context);
     final displayName = _compactName(official.name);
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final cacheWidth =
-        (_previewAvatarSize * devicePixelRatio).clamp(1, double.infinity).round();
+    final cacheWidth = (_previewAvatarSize * devicePixelRatio)
+        .clamp(1, double.infinity)
+        .round();
 
     return SizedBox(
       width: _previewAvatarSize + 12,

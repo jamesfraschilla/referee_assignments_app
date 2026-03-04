@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../image_saver.dart';
 import '../models.dart';
+import '../responsive.dart';
 import '../widgets/official_avatar.dart';
 
 const Size _portraitExportSize = Size(1536, 2592);
@@ -35,24 +35,28 @@ class AssignmentDetailScreen extends StatefulWidget {
 }
 
 class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
+  static const List<DeviceOrientation> _allOrientations = [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+
   late final GlobalKey _exportKey = widget.exportKey ?? GlobalKey();
   bool _isExporting = false;
   Color _latestBackgroundColor = Colors.black;
   bool _forceCenteredLayout = false;
+  bool _isPortraitLayout = true;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations(_allOrientations);
   }
 
   @override
   void dispose() {
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations(_allOrientations);
     super.dispose();
   }
 
@@ -75,39 +79,73 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         .map((official) => official.name)
         .toList();
     const headerLabel = "TONIGHT'S OFFICIALS";
-    final baseHeaderStyle = theme.textTheme.headlineMedium ??
+    final baseHeaderStyle =
+        theme.textTheme.headlineMedium ??
         theme.textTheme.displaySmall ??
         theme.textTheme.titleLarge ??
         theme.textTheme.titleMedium;
     final headerBaseSize = baseHeaderStyle?.fontSize ?? 32;
-    final headerStyle = (baseHeaderStyle ??
-            const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-            ))
-        .copyWith(
-      fontWeight: FontWeight.bold,
-      color: textColor,
-      fontSize: headerBaseSize * 1.3,
-    );
+    final headerStyle =
+        (baseHeaderStyle ??
+                const TextStyle(fontSize: 32, fontWeight: FontWeight.w700))
+            .copyWith(
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              fontSize: headerBaseSize * 1.3,
+            );
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final orientation = MediaQuery.of(context).orientation;
-            final isPortrait = orientation == Orientation.portrait;
             final availableWidth = constraints.maxWidth;
-            final cardWidth = availableWidth * 0.95;
-            final headerSpacing = isPortrait ? 14.0 : 12.0;
-            final footerSpacing = isPortrait ? 4.0 : 12.0;
+            final screenSize = screenSizeForWidth(availableWidth);
+            final cardMaxWidth = _cardMaxWidth(
+              screenSize,
+              isPortrait: _isPortraitLayout,
+              availableWidth: availableWidth,
+            );
+            final outerPadding = switch (screenSize) {
+              ScreenSize.compact => 12.0,
+              ScreenSize.medium => 20.0,
+              ScreenSize.expanded => 28.0,
+            };
+            final cardPadding = switch (screenSize) {
+              ScreenSize.compact => const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ),
+              ScreenSize.medium => const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 20,
+              ),
+              ScreenSize.expanded => const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 24,
+              ),
+            };
+            final headerSpacing = switch ((screenSize, _isPortraitLayout)) {
+              (ScreenSize.compact, true) => 14.0,
+              (ScreenSize.compact, false) => 12.0,
+              (_, true) => 18.0,
+              (_, false) => 14.0,
+            };
+            final footerSpacing = switch ((screenSize, _isPortraitLayout)) {
+              (ScreenSize.compact, true) => 4.0,
+              (_, true) => 10.0,
+              _ => 12.0,
+            };
+            final useWideActionRail =
+                !_isPortraitLayout && screenSize != ScreenSize.compact;
 
-            final shouldCenter = isPortrait || _forceCenteredLayout;
-            final columnMainAxis =
-                shouldCenter ? MainAxisAlignment.center : MainAxisAlignment.start;
-            final columnSize =
-                shouldCenter ? MainAxisSize.max : MainAxisSize.min;
+            final shouldCenter = _isPortraitLayout || _forceCenteredLayout;
+            final columnMainAxis = shouldCenter
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start;
+            final columnSize = shouldCenter
+                ? MainAxisSize.max
+                : MainAxisSize.min;
 
             final cardContent = DecoratedBox(
               decoration: BoxDecoration(
@@ -115,10 +153,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
+                padding: cardPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: columnMainAxis,
@@ -150,7 +185,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                     else
                       _OfficialsLayout(
                         officials: primaryOfficials,
-                        isPortrait: isPortrait,
+                        isPortrait: _isPortraitLayout,
                         textColor: textColor,
                       ),
                     SizedBox(height: footerSpacing),
@@ -167,7 +202,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               ),
             );
 
-            final displayCard = isPortrait
+            final displayCard = _isPortraitLayout
                 ? AspectRatio(
                     aspectRatio: _portraitAspectRatio,
                     child: cardContent,
@@ -183,12 +218,10 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             );
 
             final cardWrapper = SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(outerPadding),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: availableWidth < 600 ? availableWidth : cardWidth,
-                  ),
+                  constraints: BoxConstraints(maxWidth: cardMaxWidth),
                   child: exportableCard,
                 ),
               ),
@@ -201,10 +234,22 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               onPressed: _isExporting || !canExport
                   ? null
                   : () => _exportImage(
-                        targetSize: isPortrait
-                            ? _portraitExportSize
-                            : _landscapeExportSize,
-                      ),
+                      targetSize: _isPortraitLayout
+                          ? _portraitExportSize
+                          : _landscapeExportSize,
+                    ),
+              expand: false,
+            );
+            final rotateButton = _ExportButton(
+              isBusy: false,
+              label: _isPortraitLayout ? 'Rotate Landscape' : 'Rotate Portrait',
+              onPressed: _isExporting
+                  ? null
+                  : () {
+                      setState(() {
+                        _isPortraitLayout = !_isPortraitLayout;
+                      });
+                    },
               expand: false,
             );
             final wasExportButton = _ExportButton(
@@ -213,13 +258,46 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               onPressed: _isExporting || !canExport
                   ? null
                   : () => _exportImage(
-                        targetSize: _wasExportSize,
-                        contentSize: _wasContentSize,
-                      ),
+                      targetSize: _wasExportSize,
+                      contentSize: _wasContentSize,
+                    ),
               expand: false,
             );
 
-            final bodyContent = !isPortrait
+            final bodyContent = useWideActionRail
+                ? Row(
+                    children: [
+                      Expanded(child: cardWrapper),
+                      SafeArea(
+                        top: false,
+                        bottom: false,
+                        left: false,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            0,
+                            outerPadding,
+                            outerPadding,
+                            outerPadding,
+                          ),
+                          child: SizedBox(
+                            width: 160,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                rotateButton,
+                                const SizedBox(height: 12),
+                                exportButton,
+                                const SizedBox(height: 12),
+                                wasExportButton,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : !_isPortraitLayout
                 ? Column(
                     children: [
                       Expanded(child: cardWrapper),
@@ -230,7 +308,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                           padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: [exportButton],
+                            children: [
+                              rotateButton,
+                              const SizedBox(width: 12),
+                              exportButton,
+                            ],
                           ),
                         ),
                       ),
@@ -247,6 +329,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              rotateButton,
+                              const SizedBox(height: 12),
                               exportButton,
                               const SizedBox(height: 12),
                               wasExportButton,
@@ -271,6 +355,20 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         ),
       ),
     );
+  }
+
+  double _cardMaxWidth(
+    ScreenSize screenSize, {
+    required bool isPortrait,
+    required double availableWidth,
+  }) {
+    if (screenSize == ScreenSize.compact) {
+      return availableWidth;
+    }
+    if (isPortrait) {
+      return screenSize == ScreenSize.medium ? 560 : 620;
+    }
+    return screenSize == ScreenSize.medium ? 760 : 920;
   }
 
   Future<void> _exportImage({
@@ -315,11 +413,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         pixelRatio = 1.0;
       }
       final image = await boundary.toImage(pixelRatio: pixelRatio);
-      await _saveImage(
-        image,
-        targetSize: targetSize,
-        contentSize: contentSize,
-      );
+      await _saveImage(image, targetSize: targetSize, contentSize: contentSize);
       image.dispose();
     } catch (e) {
       _showSnackBar('Export failed: $e');
@@ -352,15 +446,17 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         return;
       }
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final result =
-          await savePngImage(pngBytes, 'ref_assignment_$timestamp');
+      final result = await savePngImage(pngBytes, 'ref_assignment_$timestamp');
       if (result.isSimulator) {
         _showSnackBar('Preview exported. Photos app unavailable on simulator.');
         return;
       }
-      final successMessage = kIsWeb ? 'Download started.' : 'Exported to Photos.';
-      final failureMessage =
-          kIsWeb ? 'Download failed.' : 'Export failed while saving.';
+      final successMessage = kIsWeb
+          ? 'Download started.'
+          : 'Exported to Photos.';
+      final failureMessage = kIsWeb
+          ? 'Download failed.'
+          : 'Export failed while saving.';
       _showSnackBar(result.success ? successMessage : failureMessage);
     } catch (e) {
       _showSnackBar('Export failed: $e');
@@ -373,7 +469,6 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
-
 }
 
 class _ExportButton extends StatelessWidget {
@@ -407,10 +502,7 @@ class _ExportButton extends StatelessWidget {
           )
         : Text(label);
 
-    final button = ElevatedButton(
-      onPressed: onPressed,
-      child: child,
-    );
+    final button = ElevatedButton(onPressed: onPressed, child: child);
     if (expand) {
       return SizedBox(width: double.infinity, child: button);
     }
@@ -437,8 +529,8 @@ class _OfficialsLayout extends StatelessWidget {
           final width = constraints.hasBoundedWidth && constraints.maxWidth > 0
               ? constraints.maxWidth
               : MediaQuery.of(context).size.width;
-          final availableHeight = constraints.hasBoundedHeight &&
-                  constraints.maxHeight.isFinite
+          final availableHeight =
+              constraints.hasBoundedHeight && constraints.maxHeight.isFinite
               ? constraints.maxHeight
               : double.infinity;
           final baseSize = (width * 0.32).clamp(104.0, 160.0);
@@ -472,20 +564,35 @@ class _OfficialsLayout extends StatelessWidget {
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 24,
-      runSpacing: 24,
-      children: officials
-          .map(
-            (official) => OfficialAvatar(
-              official: official,
-              size: 160,
-              compact: false,
-              textColor: textColor,
-            ),
-          )
-          .toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenSize = screenSizeForWidth(constraints.maxWidth);
+        final avatarSize = switch (screenSize) {
+          ScreenSize.compact => 132.0,
+          ScreenSize.medium => 148.0,
+          ScreenSize.expanded => 160.0,
+        };
+        final spacing = switch (screenSize) {
+          ScreenSize.compact => 16.0,
+          ScreenSize.medium => 20.0,
+          ScreenSize.expanded => 24.0,
+        };
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: spacing,
+          runSpacing: spacing,
+          children: officials
+              .map(
+                (official) => OfficialAvatar(
+                  official: official,
+                  size: avatarSize,
+                  compact: false,
+                  textColor: textColor,
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 }
@@ -562,8 +669,7 @@ Future<Uint8List?> renderAssignmentPngBytes(
     }
     picture = recorder.endRecording();
     processed = await picture.toImage(targetWidth, targetHeight);
-    final byteData =
-        await processed.toByteData(format: ui.ImageByteFormat.png);
+    final byteData = await processed.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) {
       return null;
     }
