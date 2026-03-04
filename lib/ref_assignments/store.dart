@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'league_date.dart';
 import 'models.dart';
 import 'repository.dart';
 
@@ -44,17 +45,17 @@ class RefereeAssignmentsState {
   }
 
   static RefereeAssignmentsState initial() => const RefereeAssignmentsState(
-        status: RefereeAssignmentsStatus.idle,
-        day: null,
-        isRefreshing: false,
-        availableDates: <DateTime>[],
-      );
+    status: RefereeAssignmentsStatus.idle,
+    day: null,
+    isRefreshing: false,
+    availableDates: <DateTime>[],
+  );
 }
 
 class RefereeAssignmentsStore extends ChangeNotifier {
   RefereeAssignmentsStore({RefereeAssignmentsRepository? repository})
-      : _repository = repository ?? RefereeAssignmentsRepository.instance,
-        _state = RefereeAssignmentsState.initial();
+    : _repository = repository ?? RefereeAssignmentsRepository.instance,
+      _state = RefereeAssignmentsState.initial();
 
   final RefereeAssignmentsRepository _repository;
   RefereeAssignmentsState _state;
@@ -62,13 +63,11 @@ class RefereeAssignmentsStore extends ChangeNotifier {
 
   RefereeAssignmentsState get state => _state;
 
-
-  DateTime get _selectedDate =>
-      _state.selectedDate ?? _normalizeDate(DateTime.now());
+  DateTime get _selectedDate => _state.selectedDate ?? currentLeagueDate();
 
   Future<void> loadInitial() async {
     if (_state.status != RefereeAssignmentsStatus.idle) return;
-    final today = _normalizeDate(DateTime.now());
+    final today = currentLeagueDate();
     await _setSelectedDate(today);
     await _refreshSelected();
   }
@@ -169,13 +168,12 @@ class RefereeAssignmentsStore extends ChangeNotifier {
 
   List<DateTime> _mergeDates(List<DateTime> dates, DateTime include) {
     final set = <String, DateTime>{
-      for (final date in dates) _normalizeDate(date).toIso8601String():
-          _normalizeDate(date),
+      for (final date in dates)
+        _normalizeDate(date).toIso8601String(): _normalizeDate(date),
     };
     final normalizedInclude = _normalizeDate(include);
     set[normalizedInclude.toIso8601String()] = normalizedInclude;
-    final sorted = set.values.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final sorted = set.values.toList()..sort((a, b) => b.compareTo(a));
     return List.unmodifiable(sorted);
   }
 }

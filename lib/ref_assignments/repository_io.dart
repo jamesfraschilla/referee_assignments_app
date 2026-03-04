@@ -7,21 +7,19 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
+import 'league_date.dart';
 import 'models.dart';
 import 'parser.dart';
 
 class RefereeAssignmentsRepository {
   RefereeAssignmentsRepository({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   static final RefereeAssignmentsRepository instance =
       RefereeAssignmentsRepository();
 
-  static const _endpoint =
-      'https://official.nba.com/referee-assignments/';
+  static const _endpoint = 'https://official.nba.com/referee-assignments/';
   static const _apiEndpoint =
       'https://official.nba.com/wp-json/api/v1/get-game-officials';
   static const _cacheFileName = 'referee_assignments.json';
@@ -29,9 +27,6 @@ class RefereeAssignmentsRepository {
 
   final http.Client _client;
   final RefereeAssignmentParser _parser = RefereeAssignmentParser();
-
-  static bool _tzInitialized = false;
-  static tz.Location? _easternLocation;
 
   RefereeAssignmentsDay? _memoryCache;
   final Map<String, RefereeAssignmentsDay> _memoryHistory = {};
@@ -77,7 +72,8 @@ class RefereeAssignmentsRepository {
       if (cacheKey != null) {
         _memoryHistory[cacheKey] = day;
       }
-      final matchesSelected = cacheKey != null &&
+      final matchesSelected =
+          cacheKey != null &&
           _memoryCache != null &&
           _memoryCache!.date.toIso8601String() == cacheKey;
       if (_memoryCache == null || matchesSelected) {
@@ -102,7 +98,9 @@ class RefereeAssignmentsRepository {
       try {
         parsed = await _fetchFromApi(targetDate);
         if (parsed.games.isEmpty) {
-          debugPrint('Assignments API returned no games; falling back to HTML.');
+          debugPrint(
+            'Assignments API returned no games; falling back to HTML.',
+          );
           parsed = await _fetchFromHtml();
         }
       } catch (apiError, apiStack) {
@@ -126,28 +124,7 @@ class RefereeAssignmentsRepository {
   }
 
   DateTime _computeLeagueDate() {
-    if (kIsWeb) return DateTime.now();
-    try {
-      _ensureTimezoneInitialized();
-      final location =
-          _easternLocation ??= tz.getLocation('America/New_York');
-      final easternNow = tz.TZDateTime.now(location);
-      return DateTime(easternNow.year, easternNow.month, easternNow.day);
-    } catch (e) {
-      debugPrint('Failed to compute Eastern date: $e');
-      return DateTime.now();
-    }
-  }
-
-  void _ensureTimezoneInitialized() {
-    if (_tzInitialized) return;
-    try {
-      tz.initializeTimeZones();
-    } catch (_) {
-      // Swallow duplicate initializations or failures; we fall back to local time.
-    } finally {
-      _tzInitialized = true;
-    }
+    return currentLeagueDate();
   }
 
   Future<RefereeAssignmentsDay> _fetchFromApi(DateTime targetDate) async {
@@ -231,12 +208,9 @@ class RefereeAssignmentsRepository {
     if (_memoryCache != null) {
       dates.add(_normalizeDate(_memoryCache!.date)!);
     }
-    dates.addAll(
-      _memoryHistory.values.map((day) => _normalizeDate(day.date)!),
-    );
+    dates.addAll(_memoryHistory.values.map((day) => _normalizeDate(day.date)!));
     if (kIsWeb) {
-      final sorted = dates.toList()
-        ..sort((a, b) => b.compareTo(a));
+      final sorted = dates.toList()..sort((a, b) => b.compareTo(a));
       return sorted;
     }
     try {
@@ -258,8 +232,7 @@ class RefereeAssignmentsRepository {
     } catch (e) {
       debugPrint('Failed to enumerate history: $e');
     }
-    final sorted = dates.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final sorted = dates.toList()..sort((a, b) => b.compareTo(a));
     return sorted;
   }
 

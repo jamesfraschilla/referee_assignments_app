@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import 'league_date.dart';
 import 'models.dart';
 import 'parser.dart';
 
@@ -44,7 +45,7 @@ class RefereeAssignmentsRepository {
     final completer = Completer<RefereeAssignmentsDay>();
     _ongoingFetch = completer.future;
     try {
-      final targetDate = _normalizeDate(date) ?? DateTime.now();
+      final targetDate = _normalizeDate(date) ?? currentLeagueDate();
       RefereeAssignmentsDay parsed;
       try {
         parsed = await _fetchFromApi(targetDate);

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../league_date.dart';
 import '../responsive.dart';
 import '../store.dart';
 import '../widgets/assignment_card.dart';
@@ -284,9 +285,7 @@ class _DayDropdown extends StatelessWidget {
 
   String _labelForDate(DateTime date) {
     final normalized = DateTime(date.year, date.month, date.day);
-    final today = DateTime.now();
-    final normalizedToday = DateTime(today.year, today.month, today.day);
-    if (normalized == normalizedToday) {
+    if (normalized == currentLeagueDate()) {
       return 'Today';
     }
     return DateFormat.MMMd().format(date);
