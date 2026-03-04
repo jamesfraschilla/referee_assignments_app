@@ -93,6 +93,10 @@ Future<void> exportAssignmentImage(
 
   overlay.insert(entry);
   try {
+    for (final official in primaryOfficials) {
+      await precacheImage(AssetImage(refereeAssetPath(official.name)), context);
+    }
+    await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
 
     final captureFormat = format == AssignmentExportFormat.landscape
