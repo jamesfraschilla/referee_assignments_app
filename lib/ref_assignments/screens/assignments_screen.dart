@@ -206,6 +206,9 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
                           width: cardWidth,
                           child: AssignmentCard(
                             assignment: assignment,
+                            margin: useTwoColumns
+                                ? const EdgeInsets.symmetric(vertical: 6)
+                                : null,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(

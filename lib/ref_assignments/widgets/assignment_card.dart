@@ -8,10 +8,16 @@ import '../responsive.dart';
 const double _previewAvatarSize = 64;
 
 class AssignmentCard extends StatelessWidget {
-  const AssignmentCard({super.key, required this.assignment, this.onTap});
+  const AssignmentCard({
+    super.key,
+    required this.assignment,
+    this.onTap,
+    this.margin,
+  });
 
   final RefereeGameAssignment assignment;
   final void Function()? onTap;
+  final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +43,9 @@ class AssignmentCard extends StatelessWidget {
         };
 
         return Card(
-          margin: EdgeInsets.symmetric(
-            horizontal: horizontalMargin,
-            vertical: 6,
-          ),
+          margin:
+              margin ??
+              EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
