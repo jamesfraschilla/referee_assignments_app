@@ -79,26 +79,32 @@ class OfficialAvatar extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
           child: ClipRRect(
             borderRadius: borderRadius,
-            child: Transform.scale(
-              scale: refereeHeadshotScale(official.name),
-              child: Image.asset(
-                refereeAssetPath(official.name),
-                cacheWidth: cacheWidth,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    alignment: Alignment.center,
-                    child: Text(
-                      _initials(official.name),
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
+            child: Transform.translate(
+              offset: Offset(
+                0,
+                size * refereeHeadshotYOffsetFactor(official.name),
+              ),
+              child: Transform.scale(
+                scale: refereeHeadshotScale(official.name),
+                child: Image.asset(
+                  refereeAssetPath(official.name),
+                  cacheWidth: cacheWidth,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Text(
+                        _initials(official.name),
+                        style: textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),

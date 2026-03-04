@@ -173,41 +173,55 @@ class _RefereeAssignmentsScreenState extends State<RefereeAssignmentsScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final contentMaxWidth = _contentMaxWidth(constraints.maxWidth);
+        final screenSize = screenSizeForWidth(constraints.maxWidth);
+        final useTwoColumns = screenSize != ScreenSize.compact;
+        const cardGap = 8.0;
+        final cardWidth = useTwoColumns
+            ? (contentMaxWidth - cardGap) / 2
+            : contentMaxWidth;
         return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: contentMaxWidth),
             child: RefreshIndicator(
               onRefresh: _refresh,
-              child: ListView.builder(
+              child: ListView(
                 padding: const EdgeInsets.only(bottom: 24),
-                itemCount: day.games.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Text(
-                        'Updated $lastUpdatedLabel',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.secondary,
-                        ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      'Updated $lastUpdatedLabel',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.secondary,
                       ),
-                    );
-                  }
-                  final assignment = day.games[index - 1];
-                  return AssignmentCard(
-                    assignment: assignment,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AssignmentDetailScreen(
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Wrap(
+                      spacing: cardGap,
+                      runSpacing: 0,
+                      children: day.games.map((assignment) {
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AssignmentCard(
                             assignment: assignment,
-                            assignmentDate: day.date,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => AssignmentDetailScreen(
+                                    assignment: assignment,
+                                    assignmentDate: day.date,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

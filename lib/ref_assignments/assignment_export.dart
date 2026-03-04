@@ -547,26 +547,32 @@ class _ExportOfficialTile extends StatelessWidget {
               child: SizedBox(
                 width: avatarSize,
                 height: avatarSize,
-                child: Transform.scale(
-                  scale: refereeHeadshotScale(official.name),
-                  child: Image.asset(
-                    refereeAssetPath(official.name),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    errorBuilder: (context, error, stackTrace) {
-                      return ColoredBox(
-                        color: const Color(0xFFE8E8E8),
-                        child: Center(
-                          child: Text(
-                            _initials(official.name),
-                            style: lineOneStyle.copyWith(
-                              color: Colors.black,
-                              fontSize: primaryFontSize * 0.9,
+                child: Transform.translate(
+                  offset: Offset(
+                    0,
+                    avatarSize * refereeHeadshotYOffsetFactor(official.name),
+                  ),
+                  child: Transform.scale(
+                    scale: refereeHeadshotScale(official.name),
+                    child: Image.asset(
+                      refereeAssetPath(official.name),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      errorBuilder: (context, error, stackTrace) {
+                        return ColoredBox(
+                          color: const Color(0xFFE8E8E8),
+                          child: Center(
+                            child: Text(
+                              _initials(official.name),
+                              style: lineOneStyle.copyWith(
+                                color: Colors.black,
+                                fontSize: primaryFontSize * 0.9,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),

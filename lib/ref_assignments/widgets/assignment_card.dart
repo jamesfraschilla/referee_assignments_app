@@ -146,32 +146,39 @@ class _OfficialPreview extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Transform.scale(
-              scale: refereeHeadshotScale(official.name),
-              child: Image.asset(
-                refereeAssetPath(official.name),
-                height: _previewAvatarSize,
-                width: _previewAvatarSize,
-                cacheWidth: cacheWidth,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: _previewAvatarSize,
-                    width: _previewAvatarSize,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _initials(official.name),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+            child: Transform.translate(
+              offset: Offset(
+                0,
+                _previewAvatarSize *
+                    refereeHeadshotYOffsetFactor(official.name),
+              ),
+              child: Transform.scale(
+                scale: refereeHeadshotScale(official.name),
+                child: Image.asset(
+                  refereeAssetPath(official.name),
+                  height: _previewAvatarSize,
+                  width: _previewAvatarSize,
+                  cacheWidth: cacheWidth,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: _previewAvatarSize,
+                      width: _previewAvatarSize,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                  );
-                },
+                      alignment: Alignment.center,
+                      child: Text(
+                        _initials(official.name),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

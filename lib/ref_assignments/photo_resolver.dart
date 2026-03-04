@@ -122,3 +122,12 @@ double refereeHeadshotScale(String name) {
       return 1.0;
   }
 }
+
+double refereeHeadshotYOffsetFactor(String name) {
+  switch (refereeAssetSlug(name)) {
+    case 'eric_lewis':
+      return 0.05;
+    default:
+      return 0.0;
+  }
+}
