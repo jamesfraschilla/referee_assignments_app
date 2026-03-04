@@ -8,15 +8,18 @@ import 'package:intl/intl.dart';
 
 import '../image_saver.dart';
 import '../models.dart';
+import '../photo_resolver.dart';
 import '../responsive.dart';
-import '../widgets/official_avatar.dart';
 
 const Size _portraitExportSize = Size(1536, 2592);
 const Size _landscapeExportSize = Size(3300, 2550);
 const Size _wasExportSize = Size(3840, 2160);
 const Size _wasContentSize = Size(802, 1300);
-const double _portraitAspectRatio = 1536 / 2592;
-const double _landscapeAspectRatio = 3300 / 2550;
+
+const Size _portraitCanvasSize = Size(384, 648);
+const Size _landscapeCanvasSize = Size(660, 510);
+
+enum _ExportFormat { portrait, landscape, was }
 
 class AssignmentDetailScreen extends StatefulWidget {
   const AssignmentDetailScreen({
@@ -42,11 +45,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     DeviceOrientation.landscapeRight,
   ];
 
-  late final GlobalKey _exportKey = widget.exportKey ?? GlobalKey();
+  late final GlobalKey _portraitExportKey = widget.exportKey ?? GlobalKey();
+  final GlobalKey _landscapeExportKey = GlobalKey();
   bool _isExporting = false;
-  Color _latestBackgroundColor = Colors.black;
-  bool _forceCenteredLayout = false;
   bool _isPortraitLayout = true;
+  Color _latestBackgroundColor = Colors.black;
 
   @override
   void initState() {
@@ -68,178 +71,54 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     _latestBackgroundColor = backgroundColor;
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final assignment = widget.assignment;
-    final primaryOfficials = assignment.officials
-        .where((official) => official.role != OfficialRole.alternate)
-        .toList();
-    primaryOfficials.sort(
-      (a, b) => _rolePriority(a.role).compareTo(_rolePriority(b.role)),
-    );
+    final primaryOfficials =
+        assignment.officials
+            .where((official) => official.role != OfficialRole.alternate)
+            .toList()
+          ..sort(
+            (a, b) => _rolePriority(a.role).compareTo(_rolePriority(b.role)),
+          );
     final alternate = assignment.officials
         .where((official) => official.role == OfficialRole.alternate)
         .map((official) => official.name)
         .toList();
-    const headerLabel = "TONIGHT'S OFFICIALS";
-    final baseHeaderStyle =
-        theme.textTheme.headlineMedium ??
-        theme.textTheme.displaySmall ??
-        theme.textTheme.titleLarge ??
-        theme.textTheme.titleMedium;
-    final headerBaseSize = baseHeaderStyle?.fontSize ?? 32;
-    final headerStyle =
-        (baseHeaderStyle ??
-                const TextStyle(fontSize: 32, fontWeight: FontWeight.w700))
-            .copyWith(
-              fontWeight: FontWeight.bold,
-              color: textColor,
-              fontSize: headerBaseSize * 1.3,
-            );
+    final previewFormat = _isPortraitLayout
+        ? _ExportFormat.portrait
+        : _ExportFormat.landscape;
+    final previewSize = _canvasSize(previewFormat);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final availableWidth = constraints.maxWidth;
-            final screenSize = screenSizeForWidth(availableWidth);
-            final cardMaxWidth = _cardMaxWidth(
-              screenSize,
-              isPortrait: _isPortraitLayout,
-              availableWidth: availableWidth,
-            );
+            final screenSize = screenSizeForWidth(constraints.maxWidth);
             final outerPadding = switch (screenSize) {
               ScreenSize.compact => 12.0,
               ScreenSize.medium => 20.0,
               ScreenSize.expanded => 28.0,
             };
-            final cardPadding = switch (screenSize) {
-              ScreenSize.compact => const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              ScreenSize.medium => const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 20,
-              ),
-              ScreenSize.expanded => const EdgeInsets.symmetric(
-                horizontal: 40,
-                vertical: 24,
-              ),
-            };
-            final headerSpacing = switch ((screenSize, _isPortraitLayout)) {
-              (ScreenSize.compact, true) => 14.0,
-              (ScreenSize.compact, false) => 12.0,
-              (_, true) => 18.0,
-              (_, false) => 14.0,
-            };
-            final footerSpacing = switch ((screenSize, _isPortraitLayout)) {
-              (ScreenSize.compact, true) => 4.0,
-              (_, true) => 10.0,
-              _ => 12.0,
-            };
-            final useWideActionRail =
-                !_isPortraitLayout && screenSize != ScreenSize.compact;
 
-            final shouldCenter = _isPortraitLayout || _forceCenteredLayout;
-            final columnMainAxis = shouldCenter
-                ? MainAxisAlignment.center
-                : MainAxisAlignment.start;
-            final columnSize = shouldCenter
-                ? MainAxisSize.max
-                : MainAxisSize.min;
-
-            final cardContent = DecoratedBox(
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Padding(
-                padding: cardPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: columnMainAxis,
-                  mainAxisSize: columnSize,
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          headerLabel,
-                          style: headerStyle,
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: headerSpacing),
-                    if (primaryOfficials.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 32),
-                        child: Text(
-                          'Officials not posted.',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: textColor,
-                          ),
-                        ),
-                      )
-                    else
-                      _OfficialsLayout(
-                        officials: primaryOfficials,
-                        isPortrait: _isPortraitLayout,
-                        textColor: textColor,
-                      ),
-                    SizedBox(height: footerSpacing),
-                    if (alternate.isNotEmpty)
-                      Text(
-                        'Alternate: ${alternate.join(', ')}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-
-            final displayCard = _isPortraitLayout
-                ? AspectRatio(
-                    aspectRatio: _portraitAspectRatio,
-                    child: cardContent,
-                  )
-                : AspectRatio(
-                    aspectRatio: _landscapeAspectRatio,
-                    child: cardContent,
-                  );
-
-            final exportableCard = RepaintBoundary(
-              key: _exportKey,
-              child: displayCard,
-            );
-
-            final cardWrapper = SingleChildScrollView(
+            final preview = Padding(
               padding: EdgeInsets.all(outerPadding),
               child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: cardMaxWidth),
-                  child: exportableCard,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: previewSize.width,
+                    height: previewSize.height,
+                    child: _AssignmentExportCanvas(
+                      format: previewFormat,
+                      primaryOfficials: primaryOfficials,
+                      alternate: alternate,
+                      backgroundColor: backgroundColor,
+                      textColor: textColor,
+                    ),
+                  ),
                 ),
               ),
             );
 
-            final canExport = true;
-            final exportButton = _ExportButton(
-              isBusy: _isExporting,
-              label: kIsWeb ? 'Download PNG' : 'Export',
-              onPressed: _isExporting || !canExport
-                  ? null
-                  : () => _exportImage(
-                      targetSize: _isPortraitLayout
-                          ? _portraitExportSize
-                          : _landscapeExportSize,
-                    ),
-              expand: false,
-            );
             final rotateButton = _ExportButton(
               isBusy: false,
               label: _isPortraitLayout ? 'Rotate Landscape' : 'Rotate Portrait',
@@ -250,24 +129,38 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         _isPortraitLayout = !_isPortraitLayout;
                       });
                     },
-              expand: false,
+            );
+            final exportButton = _ExportButton(
+              isBusy: _isExporting,
+              label: kIsWeb ? 'Download PNG' : 'Export',
+              onPressed: _isExporting
+                  ? null
+                  : () => _exportImage(
+                      previewFormat == _ExportFormat.portrait
+                          ? _ExportFormat.portrait
+                          : _ExportFormat.landscape,
+                    ),
             );
             final wasExportButton = _ExportButton(
               isBusy: _isExporting,
               label: kIsWeb ? 'Download WAS PNG' : 'Export WAS',
-              onPressed: _isExporting || !canExport
+              onPressed: _isExporting
                   ? null
-                  : () => _exportImage(
-                      targetSize: _wasExportSize,
-                      contentSize: _wasContentSize,
-                    ),
-              expand: false,
+                  : () => _exportImage(_ExportFormat.was),
             );
 
-            final bodyContent = useWideActionRail
+            final actionButtons = <Widget>[
+              rotateButton,
+              const SizedBox(height: 12),
+              exportButton,
+              const SizedBox(height: 12),
+              wasExportButton,
+            ];
+
+            final bodyContent = screenSize == ScreenSize.expanded
                 ? Row(
                     children: [
-                      Expanded(child: cardWrapper),
+                      Expanded(child: preview),
                       SafeArea(
                         top: false,
                         bottom: false,
@@ -284,35 +177,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
-                              children: [
-                                rotateButton,
-                                const SizedBox(height: 12),
-                                exportButton,
-                                const SizedBox(height: 12),
-                                wasExportButton,
-                              ],
+                              children: actionButtons,
                             ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : !_isPortraitLayout
-                ? Column(
-                    children: [
-                      Expanded(child: cardWrapper),
-                      const SizedBox(height: 20),
-                      SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              rotateButton,
-                              const SizedBox(width: 12),
-                              exportButton,
-                            ],
                           ),
                         ),
                       ),
@@ -320,34 +186,39 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                   )
                 : Column(
                     children: [
-                      Expanded(child: cardWrapper),
-                      const SizedBox(height: 16),
+                      Expanded(child: preview),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              rotateButton,
-                              const SizedBox(height: 12),
-                              exportButton,
-                              const SizedBox(height: 12),
-                              wasExportButton,
-                            ],
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: actionButtons,
                         ),
                       ),
                     ],
                   );
 
             return Stack(
+              clipBehavior: Clip.hardEdge,
               children: [
                 bodyContent,
                 Positioned(
                   top: 8,
                   left: 8,
                   child: _BackButton(backgroundColor: backgroundColor),
+                ),
+                Positioned(
+                  left: -10000,
+                  top: 0,
+                  child: IgnorePointer(
+                    child: _HiddenExportCanvases(
+                      portraitKey: _portraitExportKey,
+                      landscapeKey: _landscapeExportKey,
+                      primaryOfficials: primaryOfficials,
+                      alternate: alternate,
+                      backgroundColor: backgroundColor,
+                      textColor: textColor,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -357,74 +228,57 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     );
   }
 
-  double _cardMaxWidth(
-    ScreenSize screenSize, {
-    required bool isPortrait,
-    required double availableWidth,
-  }) {
-    if (screenSize == ScreenSize.compact) {
-      return availableWidth;
-    }
-    if (isPortrait) {
-      return screenSize == ScreenSize.medium ? 560 : 620;
-    }
-    return screenSize == ScreenSize.medium ? 760 : 920;
-  }
-
-  Future<void> _exportImage({
-    required Size targetSize,
-    Size? contentSize,
-  }) async {
-    final needsCentering = targetSize == _landscapeExportSize;
-    var centeringApplied = false;
-    if (needsCentering && !_forceCenteredLayout) {
-      if (mounted) {
-        setState(() {
-          _forceCenteredLayout = true;
-        });
-        centeringApplied = true;
-        await WidgetsBinding.instance.endOfFrame;
-      }
-    }
-
-    final boundary =
-        _exportKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) {
-      _showSnackBar('Unable to locate layout for export.');
-      if (centeringApplied && mounted) {
-        setState(() => _forceCenteredLayout = false);
-      }
-      return;
-    }
-    final size = boundary.size;
-    if (size.width == 0 || size.height == 0) {
-      _showSnackBar('Export failed: layout not ready.');
-      if (centeringApplied && mounted) {
-        setState(() => _forceCenteredLayout = false);
-      }
-      return;
-    }
+  Future<void> _exportImage(_ExportFormat format) async {
     setState(() => _isExporting = true);
+    await WidgetsBinding.instance.endOfFrame;
     try {
-      final widthRatio = targetSize.width / size.width;
-      final heightRatio = targetSize.height / size.height;
-      double pixelRatio = widthRatio > heightRatio ? widthRatio : heightRatio;
+      final captureFormat = format == _ExportFormat.landscape
+          ? _ExportFormat.landscape
+          : _ExportFormat.portrait;
+      final boundaryKey = captureFormat == _ExportFormat.landscape
+          ? _landscapeExportKey
+          : _portraitExportKey;
+      final logicalSize = _canvasSize(captureFormat);
+      final targetSize = switch (format) {
+        _ExportFormat.portrait => _portraitExportSize,
+        _ExportFormat.landscape => _landscapeExportSize,
+        _ExportFormat.was => _wasExportSize,
+      };
+      final captureTarget = format == _ExportFormat.was
+          ? _wasContentSize
+          : targetSize;
+      final boundary =
+          boundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+      if (boundary == null) {
+        _showSnackBar('Unable to locate layout for export.');
+        return;
+      }
+      final size = boundary.size;
+      if (size.width == 0 || size.height == 0) {
+        _showSnackBar('Export failed: layout not ready.');
+        return;
+      }
+
+      final widthRatio = captureTarget.width / logicalSize.width;
+      final heightRatio = captureTarget.height / logicalSize.height;
+      var pixelRatio = widthRatio > heightRatio ? widthRatio : heightRatio;
       if (pixelRatio < 1.0) {
         pixelRatio = 1.0;
       }
+
       final image = await boundary.toImage(pixelRatio: pixelRatio);
-      await _saveImage(image, targetSize: targetSize, contentSize: contentSize);
+      await _saveImage(
+        image,
+        targetSize: targetSize,
+        contentSize: format == _ExportFormat.was ? _wasContentSize : null,
+      );
       image.dispose();
     } catch (e) {
       _showSnackBar('Export failed: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isExporting = false;
-          if (centeringApplied) {
-            _forceCenteredLayout = false;
-          }
-        });
+        setState(() => _isExporting = false);
       }
     }
   }
@@ -471,18 +325,455 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   }
 }
 
+Size _canvasSize(_ExportFormat format) {
+  switch (format) {
+    case _ExportFormat.portrait:
+    case _ExportFormat.was:
+      return _portraitCanvasSize;
+    case _ExportFormat.landscape:
+      return _landscapeCanvasSize;
+  }
+}
+
+class _HiddenExportCanvases extends StatelessWidget {
+  const _HiddenExportCanvases({
+    required this.portraitKey,
+    required this.landscapeKey,
+    required this.primaryOfficials,
+    required this.alternate,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  final GlobalKey portraitKey;
+  final GlobalKey landscapeKey;
+  final List<RefereeOfficial> primaryOfficials;
+  final List<String> alternate;
+  final Color backgroundColor;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RepaintBoundary(
+          key: portraitKey,
+          child: SizedBox(
+            width: _portraitCanvasSize.width,
+            height: _portraitCanvasSize.height,
+            child: _AssignmentExportCanvas(
+              format: _ExportFormat.portrait,
+              primaryOfficials: primaryOfficials,
+              alternate: alternate,
+              backgroundColor: backgroundColor,
+              textColor: textColor,
+            ),
+          ),
+        ),
+        RepaintBoundary(
+          key: landscapeKey,
+          child: SizedBox(
+            width: _landscapeCanvasSize.width,
+            height: _landscapeCanvasSize.height,
+            child: _AssignmentExportCanvas(
+              format: _ExportFormat.landscape,
+              primaryOfficials: primaryOfficials,
+              alternate: alternate,
+              backgroundColor: backgroundColor,
+              textColor: textColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssignmentExportCanvas extends StatelessWidget {
+  const _AssignmentExportCanvas({
+    required this.format,
+    required this.primaryOfficials,
+    required this.alternate,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  final _ExportFormat format;
+  final List<RefereeOfficial> primaryOfficials;
+  final List<String> alternate;
+  final Color backgroundColor;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: backgroundColor,
+      child: format == _ExportFormat.landscape
+          ? _LandscapeExportLayout(
+              primaryOfficials: primaryOfficials,
+              alternate: alternate,
+              textColor: textColor,
+            )
+          : _PortraitExportLayout(
+              primaryOfficials: primaryOfficials,
+              alternate: alternate,
+              textColor: textColor,
+            ),
+    );
+  }
+}
+
+class _PortraitExportLayout extends StatelessWidget {
+  const _PortraitExportLayout({
+    required this.primaryOfficials,
+    required this.alternate,
+    required this.textColor,
+  });
+
+  final List<RefereeOfficial> primaryOfficials;
+  final List<String> alternate;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final headerStyle = TextStyle(
+      fontSize: _portraitCanvasSize.width * 0.075,
+      fontWeight: FontWeight.w700,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 1.0,
+    );
+    final footerStyle = TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 1.0,
+    );
+
+    if (primaryOfficials.isEmpty) {
+      return Center(
+        child: Text(
+          'Officials not posted.',
+          style: headerStyle.copyWith(fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 18),
+      child: Column(
+        children: [
+          Text(
+            "TONIGHT'S OFFICIALS",
+            style: headerStyle,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                for (final official in primaryOfficials)
+                  _ExportOfficialTile.portrait(
+                    official: official,
+                    textColor: textColor,
+                  ),
+              ],
+            ),
+          ),
+          if (alternate.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Alternate: ${alternate.join(', ')}',
+                style: footerStyle,
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LandscapeExportLayout extends StatelessWidget {
+  const _LandscapeExportLayout({
+    required this.primaryOfficials,
+    required this.alternate,
+    required this.textColor,
+  });
+
+  final List<RefereeOfficial> primaryOfficials;
+  final List<String> alternate;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final headerStyle = TextStyle(
+      fontSize: 42,
+      fontWeight: FontWeight.w700,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 1.0,
+    );
+    final footerStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 1.0,
+    );
+
+    if (primaryOfficials.isEmpty) {
+      return Center(
+        child: Text(
+          'Officials not posted.',
+          style: headerStyle.copyWith(fontSize: 20),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 18),
+      child: Column(
+        children: [
+          Text(
+            "TONIGHT'S OFFICIALS",
+            style: headerStyle,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                for (
+                  var index = 0;
+                  index < primaryOfficials.length;
+                  index++
+                ) ...[
+                  if (index > 0) const SizedBox(width: 18),
+                  Expanded(
+                    child: _ExportOfficialTile.landscape(
+                      official: primaryOfficials[index],
+                      textColor: textColor,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (alternate.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Alternate: ${alternate.join(', ')}',
+                style: footerStyle,
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExportOfficialTile extends StatelessWidget {
+  const _ExportOfficialTile.portrait({
+    required this.official,
+    required this.textColor,
+  }) : isPortrait = true;
+
+  const _ExportOfficialTile.landscape({
+    required this.official,
+    required this.textColor,
+  }) : isPortrait = false;
+
+  final RefereeOfficial official;
+  final Color textColor;
+  final bool isPortrait;
+
+  @override
+  Widget build(BuildContext context) {
+    final nameParts = _DisplayNameParts.from(official.name);
+    final primaryFontSize = isPortrait ? 23.0 : 17.0;
+    final secondaryFontSize = isPortrait ? 15.0 : 11.0;
+    final roleFontSize = isPortrait ? 11.0 : 8.5;
+    final avatarSize = isPortrait ? 120.0 : 138.0;
+    final imageRadius = BorderRadius.circular(isPortrait ? 18 : 20);
+    final lineOne = [
+      if (official.number != null) '#${official.number}',
+      if (nameParts.first.isNotEmpty) nameParts.first,
+    ].join(' ');
+
+    final lineOneStyle = TextStyle(
+      fontSize: primaryFontSize,
+      fontWeight: FontWeight.w700,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 0.95,
+    );
+    final lineTwoStyle = TextStyle(
+      fontSize: secondaryFontSize,
+      fontWeight: FontWeight.w600,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 0.95,
+    );
+    final roleStyle = TextStyle(
+      fontSize: roleFontSize,
+      fontWeight: FontWeight.w600,
+      color: textColor,
+      fontFamily: 'DINalt',
+      height: 1.0,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : (isPortrait ? _portraitCanvasSize.width - 48 : 170.0);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: imageRadius,
+              child: SizedBox(
+                width: avatarSize,
+                height: avatarSize,
+                child: Image.asset(
+                  refereeAssetPath(official.name),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (context, error, stackTrace) {
+                    return ColoredBox(
+                      color: const Color(0xFFE8E8E8),
+                      child: Center(
+                        child: Text(
+                          _initials(official.name),
+                          style: lineOneStyle.copyWith(
+                            color: Colors.black,
+                            fontSize: primaryFontSize * 0.9,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            SizedBox(height: isPortrait ? 8 : 10),
+            _ScaledLine(text: lineOne, style: lineOneStyle, width: textWidth),
+            if (nameParts.last.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              _ScaledLine(
+                text: nameParts.last,
+                style: lineTwoStyle,
+                width: textWidth,
+              ),
+            ],
+            SizedBox(height: isPortrait ? 2 : 4),
+            Text(
+              officialRoleLabel(official.role),
+              style: roleStyle,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ScaledLine extends StatelessWidget {
+  const _ScaledLine({
+    required this.text,
+    required this.style,
+    required this.width,
+  });
+
+  final String text;
+  final TextStyle style;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          style: style,
+          maxLines: 1,
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _DisplayNameParts {
+  const _DisplayNameParts({required this.first, required this.last});
+
+  final String first;
+  final String last;
+
+  factory _DisplayNameParts.from(String rawName) {
+    final parts = rawName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return const _DisplayNameParts(first: '', last: '');
+    }
+    if (parts.length == 1) {
+      return _DisplayNameParts(first: parts.first.toUpperCase(), last: '');
+    }
+    return _DisplayNameParts(
+      first: parts.first.toUpperCase(),
+      last: parts.sublist(1).join(' ').toUpperCase(),
+    );
+  }
+}
+
+String _initials(String raw) {
+  final parts = raw
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) {
+    return '';
+  }
+  final first = parts.first;
+  final last = parts.length > 1 ? parts.last : '';
+  final buffer = StringBuffer();
+  if (first.isNotEmpty) {
+    buffer.write(first[0]);
+  }
+  if (last.isNotEmpty) {
+    buffer.write(last[0]);
+  }
+  final value = buffer.toString();
+  return value.isEmpty ? raw[0].toUpperCase() : value.toUpperCase();
+}
+
 class _ExportButton extends StatelessWidget {
   const _ExportButton({
     required this.isBusy,
     required this.onPressed,
     required this.label,
-    this.expand = false,
   });
 
   final bool isBusy;
   final VoidCallback? onPressed;
   final String label;
-  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -502,97 +793,9 @@ class _ExportButton extends StatelessWidget {
           )
         : Text(label);
 
-    final button = ElevatedButton(onPressed: onPressed, child: child);
-    if (expand) {
-      return SizedBox(width: double.infinity, child: button);
-    }
-    return SizedBox(width: 160, child: button);
-  }
-}
-
-class _OfficialsLayout extends StatelessWidget {
-  const _OfficialsLayout({
-    required this.officials,
-    required this.isPortrait,
-    required this.textColor,
-  });
-
-  final List<RefereeOfficial> officials;
-  final bool isPortrait;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    if (isPortrait) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.hasBoundedWidth && constraints.maxWidth > 0
-              ? constraints.maxWidth
-              : MediaQuery.of(context).size.width;
-          final availableHeight =
-              constraints.hasBoundedHeight && constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : double.infinity;
-          final baseSize = (width * 0.32).clamp(104.0, 160.0);
-          double portraitSize = baseSize;
-          if (availableHeight.isFinite) {
-            const verticalSpacing = 12.0;
-            const textAllowance = 56.0;
-            final totalSpacing = verticalSpacing * (officials.length - 1);
-            final perOfficial =
-                (availableHeight - totalSpacing) / officials.length;
-            final adjusted = perOfficial - textAllowance;
-            if (adjusted.isFinite && adjusted > 48) {
-              portraitSize = adjusted.clamp(84.0, baseSize);
-            }
-          }
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: officials.map((official) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: OfficialAvatar(
-                  official: official,
-                  size: portraitSize,
-                  compact: true,
-                  textColor: textColor,
-                ),
-              );
-            }).toList(),
-          );
-        },
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenSize = screenSizeForWidth(constraints.maxWidth);
-        final avatarSize = switch (screenSize) {
-          ScreenSize.compact => 132.0,
-          ScreenSize.medium => 148.0,
-          ScreenSize.expanded => 160.0,
-        };
-        final spacing = switch (screenSize) {
-          ScreenSize.compact => 16.0,
-          ScreenSize.medium => 20.0,
-          ScreenSize.expanded => 24.0,
-        };
-        return Wrap(
-          alignment: WrapAlignment.center,
-          spacing: spacing,
-          runSpacing: spacing,
-          children: officials
-              .map(
-                (official) => OfficialAvatar(
-                  official: official,
-                  size: avatarSize,
-                  compact: false,
-                  textColor: textColor,
-                ),
-              )
-              .toList(),
-        );
-      },
+    return SizedBox(
+      width: 160,
+      child: ElevatedButton(onPressed: onPressed, child: child),
     );
   }
 }
