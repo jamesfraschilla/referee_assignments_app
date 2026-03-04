@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assignment_export.dart';
 import '../models.dart';
 import '../photo_resolver.dart';
 import '../responsive.dart';
@@ -60,7 +61,10 @@ class AssignmentCard extends StatelessWidget {
                   ),
                   if (previewOfficials.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    _AssignmentPreviewRow(officials: previewOfficials),
+                    _AssignmentPreviewRow(
+                      officials: previewOfficials,
+                      assignment: assignment,
+                    ),
                   ],
                 ],
               ),
@@ -73,9 +77,13 @@ class AssignmentCard extends StatelessWidget {
 }
 
 class _AssignmentPreviewRow extends StatelessWidget {
-  const _AssignmentPreviewRow({required this.officials});
+  const _AssignmentPreviewRow({
+    required this.officials,
+    required this.assignment,
+  });
 
   final List<RefereeOfficial> officials;
+  final RefereeGameAssignment assignment;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +99,7 @@ class _AssignmentPreviewRow extends StatelessWidget {
           ScreenSize.medium => 24.0,
           ScreenSize.expanded => 32.0,
         };
-        return Wrap(
+        final wrap = Wrap(
           alignment: WrapAlignment.center,
           spacing: spacing,
           runSpacing: 12,
@@ -101,6 +109,14 @@ class _AssignmentPreviewRow extends StatelessWidget {
                     _OfficialPreview(official: official, nameStyle: textStyle),
               )
               .toList(),
+        );
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: wrap),
+            const SizedBox(width: 12),
+            _CardExportButtons(assignment: assignment),
+          ],
         );
       },
     );
@@ -196,5 +212,105 @@ class _OfficialPreview extends StatelessWidget {
       return initials.toUpperCase();
     }
     return raw.isNotEmpty ? raw[0].toUpperCase() : '';
+  }
+}
+
+class _CardExportButtons extends StatefulWidget {
+  const _CardExportButtons({required this.assignment});
+
+  final RefereeGameAssignment assignment;
+
+  @override
+  State<_CardExportButtons> createState() => _CardExportButtonsState();
+}
+
+class _CardExportButtonsState extends State<_CardExportButtons> {
+  AssignmentExportFormat? _activeFormat;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final backgroundColor = theme.brightness == Brightness.dark
+        ? Colors.black
+        : Colors.white;
+    const formats = [
+      AssignmentExportFormat.portrait,
+      AssignmentExportFormat.landscape,
+      AssignmentExportFormat.was,
+    ];
+
+    return SizedBox(
+      width: 120,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < formats.length; index++) ...[
+            _ExportMiniButton(
+              label: assignmentExportButtonLabel(formats[index]),
+              isBusy: _activeFormat == formats[index],
+              onPressed: _activeFormat != null
+                  ? null
+                  : () => _runExport(formats[index], backgroundColor),
+            ),
+            if (index < formats.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runExport(
+    AssignmentExportFormat format,
+    Color backgroundColor,
+  ) async {
+    setState(() => _activeFormat = format);
+    try {
+      await exportAssignmentImage(
+        context,
+        assignment: widget.assignment,
+        format: format,
+        backgroundColor: backgroundColor,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _activeFormat = null);
+      }
+    }
+  }
+}
+
+class _ExportMiniButton extends StatelessWidget {
+  const _ExportMiniButton({
+    required this.label,
+    required this.isBusy,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isBusy;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = isBusy
+        ? const SizedBox(
+            height: 14,
+            width: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Text(label, textAlign: TextAlign.center, maxLines: 2);
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          textStyle: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        child: child,
+      ),
+    );
   }
 }
