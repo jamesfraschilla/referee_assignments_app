@@ -246,7 +246,7 @@ class _CardExportButtonsState extends State<_CardExportButtons> {
     };
 
     return SizedBox(
-      width: 92,
+      width: 76,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -315,7 +315,7 @@ class _ExportMiniButton extends StatelessWidget {
           elevation: 0,
           side: const BorderSide(width: 1, color: Colors.white),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
           textStyle: Theme.of(
             context,
           ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
