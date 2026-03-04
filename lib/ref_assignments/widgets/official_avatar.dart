@@ -26,8 +26,9 @@ class OfficialAvatar extends StatelessWidget {
     final textTheme = theme.textTheme;
     final borderRadius = BorderRadius.circular(16);
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final cacheWidth =
-        (size * devicePixelRatio).clamp(1, double.infinity).round();
+    final cacheWidth = (size * devicePixelRatio)
+        .clamp(1, double.infinity)
+        .round();
     final nameParts = _NameParts.from(official.name);
     final lineOneSegments = <String>[
       if (official.number != null) '#${official.number}',
@@ -39,10 +40,11 @@ class OfficialAvatar extends StatelessWidget {
         : nameParts.fallback;
     final lineTwo = compact ? '' : nameParts.last;
 
-    final basePrimaryStyle = (textTheme.headlineSmall ??
-            textTheme.titleLarge ??
-            textTheme.titleMedium ??
-            const TextStyle(fontSize: 24));
+    final basePrimaryStyle =
+        (textTheme.headlineSmall ??
+        textTheme.titleLarge ??
+        textTheme.titleMedium ??
+        const TextStyle(fontSize: 24));
     final lineOneStyle = basePrimaryStyle.copyWith(
       fontWeight: FontWeight.w700,
       color: textColor,
@@ -52,15 +54,16 @@ class OfficialAvatar extends StatelessWidget {
           ? (basePrimaryStyle.fontSize ?? 24) * 0.9
           : basePrimaryStyle.fontSize,
     );
-    final lineTwoStyle = (textTheme.titleMedium ??
-            textTheme.titleSmall ??
-            const TextStyle(fontSize: 18))
-        .copyWith(
-      fontWeight: FontWeight.w600,
-      color: textColor,
-      fontFamily: 'DINalt',
-      height: 1.0,
-    );
+    final lineTwoStyle =
+        (textTheme.titleMedium ??
+                textTheme.titleSmall ??
+                const TextStyle(fontSize: 18))
+            .copyWith(
+              fontWeight: FontWeight.w600,
+              color: textColor,
+              fontFamily: 'DINalt',
+              height: 1.0,
+            );
 
     final photoSpacing = compact ? 6.0 : 12.0;
     final lineGap = compact ? 0.0 : 2.0;
@@ -76,24 +79,27 @@ class OfficialAvatar extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
           child: ClipRRect(
             borderRadius: borderRadius,
-            child: Image.asset(
-              refereeAssetPath(official.name),
-              cacheWidth: cacheWidth,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  alignment: Alignment.center,
-                  child: Text(
-                    _initials(official.name),
-                    style: textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
+            child: Transform.scale(
+              scale: refereeHeadshotScale(official.name),
+              child: Image.asset(
+                refereeAssetPath(official.name),
+                cacheWidth: cacheWidth,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    alignment: Alignment.center,
+                    child: Text(
+                      _initials(official.name),
+                      style: textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -110,11 +116,7 @@ class OfficialAvatar extends StatelessWidget {
     if (lineTwo.isNotEmpty) {
       children.addAll([
         SizedBox(height: lineGap),
-        Text(
-          lineTwo,
-          textAlign: TextAlign.center,
-          style: lineTwoStyle,
-        ),
+        Text(lineTwo, textAlign: TextAlign.center, style: lineTwoStyle),
       ]);
     }
 
@@ -179,8 +181,10 @@ class _NameParts {
     if (trimmed.isEmpty) {
       return const _NameParts(first: '', last: '', fallback: '');
     }
-    final parts =
-        trimmed.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    final parts = trimmed
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
     if (parts.length == 1) {
       final upper = parts.first.toUpperCase();
       return _NameParts(first: upper, last: '', fallback: upper);

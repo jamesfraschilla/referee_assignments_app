@@ -112,7 +112,7 @@ class _AssignmentPreviewRow extends StatelessWidget {
               .toList(),
         );
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(child: wrap),
             SizedBox(width: actionGap),
@@ -146,30 +146,33 @@ class _OfficialPreview extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              refereeAssetPath(official.name),
-              height: _previewAvatarSize,
-              width: _previewAvatarSize,
-              cacheWidth: cacheWidth,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: _previewAvatarSize,
-                  width: _previewAvatarSize,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _initials(official.name),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+            child: Transform.scale(
+              scale: refereeHeadshotScale(official.name),
+              child: Image.asset(
+                refereeAssetPath(official.name),
+                height: _previewAvatarSize,
+                width: _previewAvatarSize,
+                cacheWidth: cacheWidth,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: _previewAvatarSize,
+                    width: _previewAvatarSize,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                );
-              },
+                    alignment: Alignment.center,
+                    child: Text(
+                      _initials(official.name),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -298,6 +301,10 @@ class _ExportMiniButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final outlineColor = theme.brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
     final child = isBusy
         ? const SizedBox(
             height: 14,
@@ -310,15 +317,15 @@ class _ExportMiniButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
+          foregroundColor: outlineColor,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          side: const BorderSide(width: 1, color: Colors.white),
+          side: BorderSide(width: 1, color: outlineColor),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         child: child,
       ),

@@ -363,7 +363,7 @@ class _PortraitExportLayout extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 18),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
       child: Column(
         children: [
           Text(
@@ -371,19 +371,15 @@ class _PortraitExportLayout extends StatelessWidget {
             style: headerStyle,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (final official in primaryOfficials)
-                  _ExportOfficialTile.portrait(
-                    official: official,
-                    textColor: textColor,
-                  ),
-              ],
+          const SizedBox(height: 10),
+          for (var index = 0; index < primaryOfficials.length; index++) ...[
+            _ExportOfficialTile.portrait(
+              official: primaryOfficials[index],
+              textColor: textColor,
             ),
-          ),
+            if (index < primaryOfficials.length - 1) const SizedBox(height: 18),
+          ],
+          const Spacer(),
           if (alternate.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -413,7 +409,7 @@ class _LandscapeExportLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final headerStyle = _exportTextStyle(
-      fontSize: 42,
+      fontSize: 50,
       fontWeight: FontWeight.w700,
       color: textColor,
       fontFamily: 'DIN',
@@ -441,13 +437,13 @@ class _LandscapeExportLayout extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
       child: Column(
         children: [
-          const Spacer(flex: 2),
+          const Spacer(flex: 3),
           Text(
             "TONIGHT'S OFFICIALS",
             style: headerStyle,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             height: 360,
             child: Row(
@@ -503,8 +499,8 @@ class _ExportOfficialTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nameParts = _DisplayNameParts.from(official.name);
-    final primaryFontSize = isPortrait ? 23.0 : 20.0;
-    final secondaryFontSize = isPortrait ? 15.0 : 13.0;
+    final primaryFontSize = isPortrait ? 23.0 : 23.0;
+    final secondaryFontSize = isPortrait ? 15.0 : 15.0;
     final roleFontSize = isPortrait ? 11.0 : 10.0;
     final avatarSize = isPortrait ? 120.0 : 170.0;
     final imageRadius = BorderRadius.circular(isPortrait ? 18 : 20);
@@ -536,6 +532,7 @@ class _ExportOfficialTile extends StatelessWidget {
       fontFamily: 'DINalt',
       height: 1.0,
     );
+    final showCrewChief = official.role == OfficialRole.crewChief;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -550,24 +547,27 @@ class _ExportOfficialTile extends StatelessWidget {
               child: SizedBox(
                 width: avatarSize,
                 height: avatarSize,
-                child: Image.asset(
-                  refereeAssetPath(official.name),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) {
-                    return ColoredBox(
-                      color: const Color(0xFFE8E8E8),
-                      child: Center(
-                        child: Text(
-                          _initials(official.name),
-                          style: lineOneStyle.copyWith(
-                            color: Colors.black,
-                            fontSize: primaryFontSize * 0.9,
+                child: Transform.scale(
+                  scale: refereeHeadshotScale(official.name),
+                  child: Image.asset(
+                    refereeAssetPath(official.name),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) {
+                      return ColoredBox(
+                        color: const Color(0xFFE8E8E8),
+                        child: Center(
+                          child: Text(
+                            _initials(official.name),
+                            style: lineOneStyle.copyWith(
+                              color: Colors.black,
+                              fontSize: primaryFontSize * 0.9,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -581,12 +581,14 @@ class _ExportOfficialTile extends StatelessWidget {
                 width: textWidth,
               ),
             ],
-            SizedBox(height: isPortrait ? 2 : 4),
-            Text(
-              officialRoleLabel(official.role),
-              style: roleStyle,
-              textAlign: TextAlign.center,
-            ),
+            if (showCrewChief) ...[
+              SizedBox(height: isPortrait ? 2 : 4),
+              Text(
+                officialRoleLabel(official.role),
+                style: roleStyle,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         );
       },

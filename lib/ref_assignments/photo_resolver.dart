@@ -113,3 +113,12 @@ String refereeAssetPath(String name, {String extension = 'jpg'}) {
   }
   return path.replaceFirst('assets/referees/', 'assets/referees_web/');
 }
+
+double refereeHeadshotScale(String name) {
+  switch (refereeAssetSlug(name)) {
+    case 'eric_lewis':
+      return 1.12;
+    default:
+      return 1.0;
+  }
+}
