@@ -29,6 +29,24 @@ Size assignmentCanvasSize(AssignmentExportFormat format) {
   }
 }
 
+TextStyle _exportTextStyle({
+  required double fontSize,
+  required FontWeight fontWeight,
+  required Color color,
+  required String fontFamily,
+  required double height,
+}) {
+  return TextStyle(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    fontFamily: fontFamily,
+    height: height,
+    decoration: TextDecoration.none,
+    decorationColor: Colors.transparent,
+  );
+}
+
 String assignmentExportButtonLabel(AssignmentExportFormat format) {
   final isWeb = kIsWeb;
   switch (format) {
@@ -319,14 +337,14 @@ class _PortraitExportLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final headerStyle = TextStyle(
+    final headerStyle = _exportTextStyle(
       fontSize: portraitCanvasSize.width * 0.075,
       fontWeight: FontWeight.w700,
       color: textColor,
       fontFamily: 'DIN',
       height: 1.0,
     );
-    final footerStyle = TextStyle(
+    final footerStyle = _exportTextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w600,
       color: textColor,
@@ -394,14 +412,14 @@ class _LandscapeExportLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final headerStyle = TextStyle(
+    final headerStyle = _exportTextStyle(
       fontSize: 42,
       fontWeight: FontWeight.w700,
       color: textColor,
       fontFamily: 'DIN',
       height: 1.0,
     );
-    final footerStyle = TextStyle(
+    final footerStyle = _exportTextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       color: textColor,
@@ -497,21 +515,21 @@ class _ExportOfficialTile extends StatelessWidget {
     ].join(' ');
     final secondLine = isPortrait ? '' : nameParts.last;
 
-    final lineOneStyle = TextStyle(
+    final lineOneStyle = _exportTextStyle(
       fontSize: primaryFontSize,
       fontWeight: FontWeight.w700,
       color: textColor,
       fontFamily: 'DINalt',
       height: 0.95,
     );
-    final lineTwoStyle = TextStyle(
+    final lineTwoStyle = _exportTextStyle(
       fontSize: secondaryFontSize,
       fontWeight: FontWeight.w600,
       color: textColor,
       fontFamily: 'DINalt',
       height: 0.95,
     );
-    final roleStyle = TextStyle(
+    final roleStyle = _exportTextStyle(
       fontSize: roleFontSize,
       fontWeight: FontWeight.w600,
       color: textColor,

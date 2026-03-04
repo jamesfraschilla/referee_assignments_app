@@ -95,10 +95,11 @@ class _AssignmentPreviewRow extends StatelessWidget {
       builder: (context, constraints) {
         final screenSize = screenSizeForWidth(constraints.maxWidth);
         final spacing = switch (screenSize) {
-          ScreenSize.compact => 16.0,
+          ScreenSize.compact => 8.0,
           ScreenSize.medium => 24.0,
           ScreenSize.expanded => 32.0,
         };
+        final actionGap = screenSize == ScreenSize.compact ? 8.0 : 12.0;
         final wrap = Wrap(
           alignment: WrapAlignment.center,
           spacing: spacing,
@@ -114,7 +115,7 @@ class _AssignmentPreviewRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: wrap),
-            const SizedBox(width: 12),
+            SizedBox(width: actionGap),
             _CardExportButtons(assignment: assignment),
           ],
         );
@@ -245,7 +246,7 @@ class _CardExportButtonsState extends State<_CardExportButtons> {
     };
 
     return SizedBox(
-      width: 120,
+      width: 92,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
